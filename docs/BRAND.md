@@ -32,13 +32,17 @@ Dos “celdas” (mallas) compartiendo un núcleo: alinea con Meshtastic + MeshC
 - Splash / título: sans condensada en mayúsculas (**DCN**).
 - UI embebida: fuentes Meshtastic existentes (no cambiar métricas LVGL sin necesidad).
 
-## Logo (placeholder)
+## Logo (implementado)
 
-Monograma **DCN** o dos hexágonos entrelazados; exportar luego:
+Fuente: `branding/source/`. Export: `branding/exports/` (script `render_dcn_assets.py`).
 
-- `assets/dcn_splash_320x48.png` (arranque)
-- `assets/dcn_icon_64.png` (about)
-- `assets/dcn_icon_512.png` (builder/web)
+| Archivo | Uso |
+|---------|-----|
+| `logo_320x240.png` | Arranque T-Deck TFT |
+| `dcn_icon_512.png` | GitHub / releases |
+| `dcn_icon_64.png` | About / mapa (`firmware/images/dcn_node.png`) |
+| `dcn_builder.svg` | Builder web |
+| `dcn_oem.xbm.h` | OEM en `userPrefs` |
 
 ## Textos legales en firmware
 

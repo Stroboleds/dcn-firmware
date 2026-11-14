@@ -1,0 +1,16 @@
+{
+  // DCN factory defaults — applied on first boot / after apply-dcn-branding + flash
+  "USERPREFS_OEM_TEXT": "Dual-Cell-Net",
+  "USERPREFS_OEM_FONT_SIZE": "1",
+  "USERPREFS_CONFIG_LORA_REGION": "meshtastic_Config_LoRaConfig_RegionCode_EU_868",
+  "USERPREFS_CONFIG_OWNER_LONG_NAME": "DCN Node",
+  "USERPREFS_CONFIG_OWNER_SHORT_NAME": "DCN",
+  "USERPREFS_CHANNELS_TO_WRITE": "3",
+  "USERPREFS_CHANNEL_0_NAME": "DCN-Mesh",
+  "USERPREFS_CHANNEL_0_PSK": "{ 0x01 }",
+  "USERPREFS_CHANNEL_0_PRECISION": "16",
+  "USERPREFS_CHANNEL_1_NAME": "DCN-Ops",
+  "USERPREFS_CHANNEL_1_PSK": "{ 0x02 }",
+  "USERPREFS_CHANNEL_2_NAME": "MC:Public",
+  "USERPREFS_CHANNEL_2_PSK": "{ 0x01 }"
+}

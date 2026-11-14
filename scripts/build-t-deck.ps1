@@ -7,6 +7,8 @@ if (-not (Test-Path $FirmwareDir)) {
     exit 1
 }
 
+& (Join-Path (Split-Path -Parent $PSScriptRoot) "scripts\apply-dcn-branding.ps1")
+
 Set-Location $FirmwareDir
 
 if (-not (Get-Command pio -ErrorAction SilentlyContinue)) {
@@ -14,4 +16,4 @@ if (-not (Get-Command pio -ErrorAction SilentlyContinue)) {
     exit 1
 }
 
-pio run -e t-deck
+pio run -e dcn-t-deck

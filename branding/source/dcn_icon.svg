@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
+  <defs>
+    <linearGradient id="teal" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0D4F4F"/>
+      <stop offset="100%" stop-color="#1a7a7a"/>
+    </linearGradient>
+    <linearGradient id="amber" x1="100%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#E85D04"/>
+      <stop offset="100%" stop-color="#f59e0b"/>
+    </linearGradient>
+  </defs>
+  <rect width="120" height="120" rx="24" fill="#12151A"/>
+  <ellipse cx="60" cy="60" fill="none" stroke="url(#teal)" stroke-width="3" rx="42" ry="18" transform="rotate(-32 60 60)"/>
+  <ellipse cx="60" cy="60" fill="none" stroke="url(#amber)" stroke-width="3" rx="42" ry="18" transform="rotate(32 60 60)"/>
+  <circle cx="36" cy="42" r="4" fill="#2DD881"/>
+  <circle cx="84" cy="78" r="4" fill="#E85D04"/>
+  <path fill="url(#teal)" stroke="#E8EAED" stroke-width="1.5" d="m60 38 14 8v20l-14 8-14-8V46z"/>
+  <text x="60" y="104" text-anchor="middle" font-family="Segoe UI,Arial,sans-serif" font-size="14" font-weight="700" fill="#E8EAED">DCN</text>
+</svg>
