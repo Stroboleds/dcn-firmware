@@ -10,8 +10,8 @@ Set-Location $Root
 
 gh auth status | Out-Null
 
-$remote = git remote get-url origin 2>$null
-if ($LASTEXITCODE -eq 0) {
+$remote = @(git remote get-url origin 2>$null)
+if ($remote.Count -gt 0 -and $remote[0]) {
     Write-Host "Remote origin ya configurado: $remote"
     git push -u origin main
     exit 0
