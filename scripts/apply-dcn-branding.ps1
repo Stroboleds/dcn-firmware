@@ -51,18 +51,10 @@ if (Test-Path $builderSvg) {
 $tdeckDir = Join-Path (Join-Path (Join-Path (Join-Path $Fw "variants") "esp32s3") "t-deck")
 Copy-Item (Join-Path (Join-Path (Join-Path (Join-Path $Root "overlay") "variants") "esp32s3") "t-deck") "sdkconfig.h") (Join-Path $tdeckDir "sdkconfig.h") -Force
 
-$pioSrc = Join-Path (Join-Path (Join-Path (Join-Path (Join-Path $Root "overlay") "variants") "esp32s3") "t-deck") "platformio_dcn.ini"
+$pioOverlay = Join-Path (Join-Path (Join-Path (Join-Path (Join-Path $Root "overlay") "variants") "esp32s3") "t-deck") "platformio.ini"
 $pioBase = Join-Path (Join-Path (Join-Path $Fw "variants") "esp32s3") "t-deck\platformio.ini"
-$pioAppend = Get-Content $pioSrc -Raw
-if ((Get-Content $pioBase -Raw) -notmatch "\[env:dcn-t-deck\]") {
-    Add-Content -Path $pioBase -Value "`n$pioAppend"
-}
-
-# T-Deck display name in base env (fallback)
-$content = Get-Content $pioBase -Raw
-if ($content -notmatch "Dual-Cell-Net") {
-    $content = $content -replace 'custom_meshtastic_display_name = LILYGO T-Deck', 'custom_meshtastic_display_name = Dual-Cell-Net T-Deck'
-    Set-Content -Path $pioBase -Value $content -NoNewline
+if (Test-Path $pioOverlay) {
+    Copy-Item $pioOverlay $pioBase -Force
 }
 
 # Merge userPrefs: overlay keys + generate OEM XBM from render output

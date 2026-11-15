@@ -32,10 +32,8 @@ fi
 TDECK=firmware/variants/esp32s3/t-deck
 mkdir -p "$TDECK"
 cp -f overlay/variants/esp32s3/t-deck/sdkconfig.h "$TDECK/sdkconfig.h"
-if [[ -f overlay/variants/esp32s3/t-deck/platformio_dcn.ini ]]; then
-  if ! grep -q '\[env:dcn-t-deck\]' "$TDECK/platformio.ini" 2>/dev/null; then
-    printf '\n%s\n' "$(cat overlay/variants/esp32s3/t-deck/platformio_dcn.ini)" >>"$TDECK/platformio.ini"
-  fi
+if [[ -f overlay/variants/esp32s3/t-deck/platformio.ini ]]; then
+  cp -f overlay/variants/esp32s3/t-deck/platformio.ini "$TDECK/platformio.ini"
 fi
 
 "$PY" scripts/merge_userprefs.py
