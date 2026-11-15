@@ -249,6 +249,10 @@ jobs:
         working-directory: ${{ github.workspace }}
         run: bash scripts/apply-dcn-branding.sh
 
+      - name: Stamp DCN build number (visible en pantalla)
+        working-directory: ${{ github.workspace }}
+        run: python3 scripts/dcn_ci_version.py
+
       - name: Setup Python 3.12
         uses: actions/setup-python@v5
         with:

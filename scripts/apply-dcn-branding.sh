@@ -40,6 +40,17 @@ fi
 "$PY" scripts/patch-builder-web.py
 "$PY" scripts/patch-firmware-dcn.py
 
+# Parches web (flasher LittleFS, etc.)
+WEB_OVR=overlay/custom_builder_web
+WEB_DST=firmware/custom_builder_web
+if [[ -d "$WEB_OVR" ]]; then
+  mkdir -p "$WEB_DST"
+  for f in "$WEB_OVR"/*.js; do
+    [[ -f "$f" ]] || continue
+    cp -f "$f" "$WEB_DST/$(basename "$f")"
+  done
+fi
+
 OPT_SRC=overlay/src/modules/optional
 OPT_DST=firmware/src/modules/optional
 if [[ -d "$OPT_SRC" ]]; then

@@ -5,7 +5,7 @@
   "brand_short": "DCN",
   "brand_badge": "Dual-Cell-Net",
   "pages_base": "https://stroboleds.github.io/dcn-firmware",
-  "web_asset_rev": "2",
+  "web_asset_rev": "3",
   "workflow_file": "custom_builder.yml",
   "upstream_credit": "Basado en meshtacore-firmware (Meshtastic + MeshCore). Meshtastic® es marca de Meshtastic LLC."
 }
