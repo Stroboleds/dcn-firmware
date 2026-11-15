@@ -12,7 +12,7 @@ CFG_PATH = ROOT / "overlay" / "dcn-site.json"
 WEB = ROOT / "firmware" / "custom_builder_web"
 OVERLAY_WEB = ROOT / "overlay" / "custom_builder_web"
 
-HTML_NAMES = (
+HTML_TOUCH = (
     "index.html",
     "builder.html",
     "flasher.html",
@@ -21,6 +21,16 @@ HTML_NAMES = (
     "decrypt.html",
     "docs/index.html",
     "docs/administracion-remota.html",
+)
+
+BUILDER_REPLACEMENTS = (
+    ("Meshtacore Builder", "Cell-Mesh Builder"),
+    ("Web Builder", "Generador Cell-Mesh"),
+    ("Meshtacore", "Cell-Mesh"),
+    ("meshtacore", "DCN"),
+    ("MESHTACORE", "DCN"),
+    ("Abrir Meshtacore Builder", "Generar firmware"),
+    ("Un Radio, Dos Meshes", "Dual-Cell-Net · Firmware"),
 )
 
 
@@ -45,96 +55,76 @@ def patch_js_repo(cfg: dict) -> None:
 
     env = WEB / "flasher-env.js"
     env.write_text(
-        f'''// Repositorio DCN ({full})
-export const REPO = "{full}";
-''',
+        f'// Repositorio DCN ({full})\nexport const REPO = "{full}";\n',
         encoding="utf-8",
     )
-
-    for path in WEB.rglob("flasher-github.js"):
-        # sin cambios estructurales
-        pass
 
 
 def copy_overlay_assets() -> None:
     WEB.mkdir(parents=True, exist_ok=True)
-    if OVERLAY_WEB.is_dir():
-        for src in OVERLAY_WEB.iterdir():
-            if src.is_file():
-                shutil.copy2(src, WEB / src.name)
+    overlay_index = OVERLAY_WEB / "index.html"
+    if overlay_index.is_file():
+        shutil.copy2(overlay_index, WEB / "index.html")
+    for src in OVERLAY_WEB.iterdir():
+        if src.is_file() and src.name != "index.html":
+            shutil.copy2(src, WEB / src.name)
     logo = ROOT / "branding" / "source" / "dcn_logo.png"
     if logo.is_file():
         shutil.copy2(logo, WEB / "logo.png")
+    for stale in ("dcn-theme.js", "dcn-palette.css"):
+        path = WEB / stale
+        if path.is_file():
+            path.unlink()
 
 
 def inject_assets(html_path: Path) -> None:
     text = html_path.read_text(encoding="utf-8")
     in_docs = "docs" in html_path.parts
-    css_href = "../dcn-palette.css" if in_docs else "dcn-palette.css"
-    js_href = "../dcn-theme.js" if in_docs else "dcn-theme.js"
-    if "dcn-palette.css" not in text:
+    css_href = "../dcn-brand.css" if in_docs else "dcn-brand.css"
+    js_href = "../dcn-footer.js" if in_docs else "dcn-footer.js"
+
+    if "dcn-brand.css" not in text:
         text = text.replace(
             "</head>",
-            f'    <link rel="stylesheet" href="{css_href}" />\n  </head>',
+            f'    <link rel="stylesheet" href="{css_href}" />\n'
+            f'    <script src="{js_href}" defer></script>\n  </head>',
             1,
         )
-    if "dcn-theme.js" not in text:
-        if '<script src="../theme.js"></script>' in text:
-            text = text.replace(
-                '<script src="../theme.js"></script>',
-                f'<script src="../theme.js"></script>\n    <script src="{js_href}"></script>',
-                1,
-            )
-        else:
-            text = text.replace(
-                '<script src="theme.js"></script>',
-                f'<script src="theme.js"></script>\n    <script src="{js_href}"></script>',
-                1,
-            )
+
+    if "dcn-theme.js" in text:
+        text = text.replace(
+            '<script src="dcn-theme.js"></script>\n', ""
+        ).replace('<script src="../dcn-theme.js"></script>\n', "")
+    if "dcn-palette.css" in text:
+        text = re.sub(
+            r'\s*<link rel="stylesheet" href="(\.\./)?dcn-palette\.css" />\s*',
+            "\n",
+            text,
+        )
+
     html_path.write_text(text, encoding="utf-8")
 
 
-def rebrand_html(cfg: dict) -> None:
-    owner, name = cfg["repo_owner"], cfg["repo_name"]
-    gh = f"https://github.com/{owner}/{name}"
+def patch_page_copy(cfg: dict, path: Path) -> None:
     brand = cfg["brand_name"]
-    short = cfg["brand_short"]
     badge = cfg["brand_badge"]
-    pages = cfg["pages_base"]
-
-    replacements = [
-        ("https://github.com/xejarque/meshtacore-firmware", gh),
-        ("xejarque/meshtacore-firmware", f"{owner}/{name}"),
-        ("https://xejarque.github.io/meshtacore-firmware", pages.rstrip("/")),
-        ("Meshtacore Logo", f"{brand} logo"),
-        (">Meshtacore<", f">{brand}<"),
-        ("Meshtacore -", f"{brand} (DCN) -"),
-        ("Meshtacore es un firmware", f"{brand} (DCN) es un firmware"),
-        ("Dual-Mesh", badge),
-        ("meshtacore-firmware", name),
-    ]
-
-    for rel in HTML_NAMES:
-        path = WEB / rel
-        if not path.is_file():
-            continue
-        inject_assets(path)
-        text = path.read_text(encoding="utf-8")
-        for old, new in replacements:
-            text = text.replace(old, new)
+    text = path.read_text(encoding="utf-8")
+    for old, new in BUILDER_REPLACEMENTS:
+        text = text.replace(old, new)
+    text = text.replace("Dual-Mesh", badge)
+    text = re.sub(
+        r'<img([^>]+)src="logo\.svg"',
+        r'<img\1src="logo.png"',
+        text,
+    )
+    if path.name != "index.html":
         text = re.sub(
-            r'<img([^>]+)src="logo\.svg"',
-            r'<img\1src="logo.png"',
-            text,
-            count=0,
-        )
-        text = re.sub(
-            r'content="Meshtacore[^"]*"',
-            f'content="{brand} — firmware dual-mesh LoRa (DCN)"',
+            r"(<title>)[^<]+(</title>)",
+            rf"\1{brand} (DCN)\2",
             text,
             count=1,
         )
-        path.write_text(text, encoding="utf-8")
+    path.write_text(text, encoding="utf-8")
 
 
 def sweep_upstream_refs(cfg: dict) -> None:
@@ -142,13 +132,19 @@ def sweep_upstream_refs(cfg: dict) -> None:
     pages = cfg["pages_base"].rstrip("/")
     patterns = [
         ("xejarque/meshtacore-firmware", f"{owner}/{name}"),
-        ("https://github.com/xejarque/meshtacore-firmware", f"https://github.com/{owner}/{name}"),
+        (
+            "https://github.com/xejarque/meshtacore-firmware",
+            f"https://github.com/{owner}/{name}",
+        ),
         ("https://xejarque.github.io/meshtacore-firmware", pages),
         ('const REPO_OWNER = "xejarque"', f'const REPO_OWNER = "{owner}"'),
-        ('const REPO_NAME = "meshtacore-firmware"', f'const REPO_NAME = "{name}"'),
+        (
+            'const REPO_NAME = "meshtacore-firmware"',
+            f'const REPO_NAME = "{name}"',
+        ),
     ]
     for path in WEB.rglob("*"):
-        if path.suffix not in {".html", ".js", ".md"}:
+        if path.suffix not in {".html", ".js"}:
             continue
         text = path.read_text(encoding="utf-8")
         orig = text
@@ -164,10 +160,17 @@ def main() -> None:
     cfg = load_cfg()
     copy_overlay_assets()
     patch_js_repo(cfg)
-    rebrand_html(cfg)
+    for rel in HTML_TOUCH:
+        path = WEB / rel
+        if not path.is_file():
+            continue
+        if rel != "index.html":
+            inject_assets(path)
+            patch_page_copy(cfg, path)
     sweep_upstream_refs(cfg)
     print(
-        f"Builder web parcheado → {cfg['repo_owner']}/{cfg['repo_name']} ({cfg['brand_name']})"
+        f"Web DCN → {cfg['repo_owner']}/{cfg['repo_name']} "
+        f"(landing propia; temas de color solo en dispositivo)"
     )
 
 

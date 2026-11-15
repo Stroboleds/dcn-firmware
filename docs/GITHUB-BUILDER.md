@@ -26,17 +26,14 @@ Cada usuario elige placa, región **EU_868**, canales y nombre de nodo en el bui
 
 El repo del builder apunta a **`Stroboleds/dcn-firmware`** (ver `overlay/dcn-site.json`).
 
-## Temas y paletas
+## Web vs. dispositivo
 
-En la barra superior: **modo claro/oscuro** y selector **Tema** (paleta de acento).
+| Capa | Apariencia |
+|------|------------|
+| **Sitio GitHub Pages** | Identidad fija Cell-Mesh: azul + naranja. Landing propia y pie de página con **atribución a meshtacore-firmware**. |
+| **Pantalla del nodo** | El usuario elige tema en el builder (`overlay/device-ui-themes.json`); por defecto **azul eléctrico**. |
 
-| Paleta | Uso |
-|--------|-----|
-| **Azul eléctrico** | Por defecto (sustituye el verde meshtacore) |
-| DCN teal / Cell naranja / Violeta | Alternativas |
-| Verde clásico | Estilo upstream |
-
-Preferencias en `localStorage` (`dcn_palette`, `dcn_theme_mode`).
+La web solo conserva modo claro/oscuro (`theme.js`). No hay paletas en el navegador.
 
 ## Branding local antes de compilar
 

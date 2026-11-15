@@ -1,0 +1,36 @@
+{
+  "default": "electric-blue",
+  "note": "Temas de acento en pantalla del dispositivo (no la web). Se aplican vía userPrefs / build flags en el builder.",
+  "palettes": [
+    {
+      "id": "electric-blue",
+      "label": "Azul eléctrico (DCN por defecto)",
+      "primary": "#0077FF",
+      "secondary": "#E85D04"
+    },
+    {
+      "id": "dcn-teal",
+      "label": "Teal Dual-Cell",
+      "primary": "#0D7C7C",
+      "secondary": "#2DD881"
+    },
+    {
+      "id": "cell-orange",
+      "label": "Naranja Cell",
+      "primary": "#E85D04",
+      "secondary": "#FFB86A"
+    },
+    {
+      "id": "violet",
+      "label": "Violeta",
+      "primary": "#7C3AED",
+      "secondary": "#A78BFA"
+    },
+    {
+      "id": "classic-green",
+      "label": "Verde Meshtastic (legado)",
+      "primary": "#1A7F37",
+      "secondary": "#2EA043"
+    }
+  ]
+}

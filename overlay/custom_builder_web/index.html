@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="es" data-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cell-Mesh · DCN — Generador de firmware dual-mesh</title>
+    <meta
+      name="description"
+      content="Dual-Cell-Net: compila firmware Meshtastic + MeshCore para tu placa. Builder en GitHub Actions, flasher web, EU868."
+    />
+    <link rel="icon" href="logo.png" />
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="landing.css?v=dcn" />
+    <link rel="stylesheet" href="dcn-brand.css" />
+    <script src="theme.js"></script>
+    <script src="dcn-footer.js" defer></script>
+  </head>
+  <body>
+    <header class="site-nav">
+      <div class="nav-content">
+        <a href="index.html" class="brand-logo">
+          <img
+            src="logo.png"
+            alt="DCN"
+            class="brand-logo-img"
+            width="28"
+            height="28"
+          />
+          <span>Cell-Mesh</span>
+          <span class="brand-badge">DCN</span>
+        </a>
+        <nav>
+          <ul class="nav-links">
+            <li><a href="index.html" class="active">Inicio</a></li>
+            <li><a href="#como">Cómo funciona</a></li>
+            <li><a href="#temas">Temas en el equipo</a></li>
+            <li><a href="docs/index.html">Docs</a></li>
+            <li><a href="flasher.html">Flasher</a></li>
+            <li><a href="builder.html" class="nav-cta-btn">Generar firmware</a></li>
+            <li>
+              <a
+                href="https://github.com/Stroboleds/dcn-firmware"
+                target="_blank"
+                rel="noopener"
+                >GitHub</a
+              >
+            </li>
+            <li>
+              <button class="theme-toggle-btn" type="button">Modo oscuro</button>
+            </li>
+          </ul>
+        </nav>
+      </div>
+    </header>
+
+    <div class="landing-wrapper">
+      <section class="dcn-hero-band">
+        <div class="dcn-pill-row">
+          <span class="dcn-pill">Dual-Cell-Net</span>
+          <span class="dcn-pill">EU 868 MHz</span>
+          <span class="dcn-pill">Build en la nube</span>
+        </div>
+        <h1>Dos celdas mesh. Una antena. Tu firmware.</h1>
+        <p class="lead">
+          <strong>Cell-Mesh (DCN)</strong> empaqueta la pila dual-mesh (Meshtastic +
+          MeshCore en SX126x) con marca y canales europeos. Cada operador genera su
+          binario desde el navegador; la compilación ocurre en <strong>GitHub
+          Actions</strong>, no en tu PC.
+        </p>
+        <div class="hero-cta-group">
+          <a href="builder.html" class="btn-engineer">Generar mi firmware</a>
+          <a href="update.html" class="btn-hollow">Instalar / actualizar</a>
+        </div>
+      </section>
+
+      <div class="dcn-grid-3" id="como">
+        <article class="dcn-card">
+          <h2>Builder comunitario</h2>
+          <p>
+            Elige placa (p. ej. T-Deck TFT), región, canales y nombre de nodo. El
+            workflow <code>custom_builder.yml</code> produce un zip listo para flashear.
+          </p>
+        </article>
+        <article class="dcn-card accent-orange">
+          <h2>Flasher en el navegador</h2>
+          <p>
+            Instala por USB con Chrome/Edge (ESP32) o arrastra UF2 (nRF52). Incluye
+            OTA loader cuando corresponde.
+          </p>
+        </article>
+        <article class="dcn-card">
+          <h2>Documentación heredada</h2>
+          <p>
+            Los manuales de comandos Nexus y dual-mesh siguen en <code>docs/</code>
+            (adaptados desde upstream). La portada DCN es distinta; el motor técnico es
+            compatible.
+          </p>
+        </article>
+      </div>
+
+      <section>
+        <h2 style="margin-bottom: 1rem">En tres pasos</h2>
+        <ol class="dcn-steps">
+          <li>
+            Abre el <a href="builder.html">generador</a>, configura equipo y
+            preferencias (incluido tema de pantalla si tu placa lo muestra).
+          </li>
+          <li>
+            Autoriza GitHub Actions y descarga el artefacto cuando termine el job.
+          </li>
+          <li>
+            Flashea con <a href="flasher.html">flasher</a> o el script del bundle.
+          </li>
+        </ol>
+      </section>
+
+      <section id="temas" class="dcn-card" style="margin-top: 2rem">
+        <h2>Temas y color en el dispositivo</h2>
+        <p>
+          Los <strong>temas de color</strong> (azul eléctrico, teal DCN, naranja,
+          violeta, etc.) afectan la <strong>interfaz del nodo</strong> (pantalla TFT /
+          mapa), no esta web. En el builder, elige el tema en las opciones de UI del
+          equipo; queda sellado en <code>userPrefs</code> del firmware.
+        </p>
+        <p style="margin-top: 0.5rem; color: var(--text-muted); font-size: 0.9rem">
+          Esta página usa una sola identidad azul/naranja Cell-Mesh.
+        </p>
+      </section>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,193 @@
+/* Cell-Mesh / DCN — identidad web (azul + naranja). No es la UI del dispositivo. */
+
+:root,
+[data-theme="light"] {
+  --dcn-blue: #0077ff;
+  --dcn-blue-dark: #0044aa;
+  --dcn-orange: #e85d04;
+  --dcn-orange-soft: #ffb86a;
+  --accent: var(--dcn-blue);
+  --accent-hover: var(--dcn-blue-dark);
+  --accent-light: rgba(0, 119, 255, 0.12);
+  --input-focus: var(--dcn-orange);
+  --dcn-hero-gradient: linear-gradient(
+    135deg,
+    #001a3d 0%,
+    #003d7a 45%,
+    #c44d03 100%
+  );
+}
+
+[data-theme="dark"] {
+  --accent: #3d9bff;
+  --accent-hover: #6bb3ff;
+  --accent-light: rgba(61, 155, 255, 0.18);
+  --input-focus: var(--dcn-orange-soft);
+  --dcn-hero-gradient: linear-gradient(
+    135deg,
+    #020810 0%,
+    #0a2744 50%,
+    #7a3208 100%
+  );
+}
+
+body {
+  font-family:
+    "Segoe UI",
+    system-ui,
+    -apple-system,
+    sans-serif;
+}
+
+.site-nav {
+  border-bottom: 2px solid var(--dcn-orange);
+  background: linear-gradient(90deg, #001529 0%, #003366 100%);
+}
+
+.site-nav .brand-logo span,
+.site-nav .nav-links a {
+  color: #f0f6ff !important;
+}
+
+.site-nav .brand-badge {
+  background: var(--dcn-orange) !important;
+  color: #fff !important;
+  border: none !important;
+}
+
+.site-nav .nav-cta-btn {
+  background: var(--dcn-orange) !important;
+  border-color: var(--dcn-orange-soft) !important;
+  color: #fff !important;
+}
+
+.dcn-hero-band {
+  background: var(--dcn-hero-gradient);
+  color: #fff;
+  border-radius: 16px;
+  padding: 2rem 1.75rem;
+  margin-bottom: 2rem;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.dcn-hero-band h1 {
+  font-size: 2.1rem;
+  margin-bottom: 0.75rem;
+  letter-spacing: -0.02em;
+}
+
+.dcn-hero-band .lead {
+  max-width: 42rem;
+  opacity: 0.95;
+  line-height: 1.55;
+}
+
+.dcn-pill-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 1.25rem 0;
+}
+
+.dcn-pill {
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+.dcn-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1.25rem;
+  margin: 2rem 0;
+}
+
+.dcn-card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  padding: 1.25rem;
+  border-top: 4px solid var(--dcn-blue);
+  box-shadow: var(--card-shadow);
+}
+
+.dcn-card.accent-orange {
+  border-top-color: var(--dcn-orange);
+}
+
+.dcn-card h2 {
+  font-size: 1.1rem;
+  margin-bottom: 0.5rem;
+  color: var(--accent);
+}
+
+.dcn-steps {
+  counter-reset: dcnstep;
+  list-style: none;
+  padding: 0;
+}
+
+.dcn-steps li {
+  counter-increment: dcnstep;
+  margin-bottom: 1rem;
+  padding-left: 2.5rem;
+  position: relative;
+}
+
+.dcn-steps li::before {
+  content: counter(dcnstep);
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 50%;
+  background: var(--dcn-orange);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dcn-attribution-footer {
+  margin-top: 3rem;
+  padding: 1.5rem 1rem;
+  border-top: 3px solid var(--dcn-orange);
+  background: var(--card-header-bg);
+  font-size: 0.88rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+.dcn-attribution-footer strong {
+  color: var(--text-main);
+}
+
+.dcn-attribution-footer a {
+  color: var(--accent);
+}
+
+.artisan-hero,
+.tech-spec-panel,
+.comparison-table-wrapper {
+  display: none !important;
+}
+
+.landing-wrapper {
+  max-width: 920px;
+}
+
+.btn-engineer {
+  background: var(--dcn-blue) !important;
+  border-color: var(--dcn-blue-dark) !important;
+}
+
+.btn-hollow:hover {
+  border-color: var(--dcn-orange) !important;
+  color: var(--dcn-orange) !important;
+}
