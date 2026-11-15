@@ -54,10 +54,18 @@ def patch_js_repo(cfg: dict) -> None:
     app.write_text(text, encoding="utf-8")
 
     env = WEB / "flasher-env.js"
-    env.write_text(
-        f'// Repositorio DCN ({full})\nexport const REPO = "{full}";\n',
-        encoding="utf-8",
+    if not env.is_file():
+        raise SystemExit(f"Falta {env}; actualiza el submódulo firmware.")
+    text = env.read_text(encoding="utf-8")
+    text, n = re.subn(
+        r'export const REPO = "[^"]+";',
+        f'export const REPO = "{full}";',
+        text,
+        count=1,
     )
+    if n != 1:
+        raise SystemExit(f"No pude parchear REPO en {env}")
+    env.write_text(text, encoding="utf-8")
 
 
 def copy_overlay_assets() -> None:
