@@ -74,5 +74,12 @@ if (Test-Path $logoSrc) {
 
 python (Join-Path (Join-Path $Root "scripts") "patch-builder-web.py")
 
+$optSrc = Join-Path (Join-Path (Join-Path $Root "overlay") "src") "modules\optional"
+$optDst = Join-Path (Join-Path $Fw "src") "modules\optional"
+if (Test-Path $optSrc) {
+    New-Item -ItemType Directory -Force -Path $optDst | Out-Null
+    Copy-Item (Join-Path $optSrc "*") $optDst -Recurse -Force
+}
+
 Write-Host "DCN branding applied under firmware/ (submodule cambiado localmente)." -ForegroundColor Green
 Write-Host "Compila con: pio run -e dcn-t-deck  (desde firmware/)" -ForegroundColor Cyan

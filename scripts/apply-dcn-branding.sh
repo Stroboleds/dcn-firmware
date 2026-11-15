@@ -39,6 +39,13 @@ fi
 "$PY" scripts/merge_userprefs.py
 "$PY" scripts/patch-builder-web.py
 
+OPT_SRC=overlay/src/modules/optional
+OPT_DST=firmware/src/modules/optional
+if [[ -d "$OPT_SRC" ]]; then
+  mkdir -p "$OPT_DST"
+  cp -a "$OPT_SRC"/. "$OPT_DST/"
+fi
+
 mkdir -p firmware/images
 if [[ -f branding/exports/dcn_icon_64.png ]]; then
   cp -f branding/exports/dcn_icon_64.png firmware/images/dcn_node.png
