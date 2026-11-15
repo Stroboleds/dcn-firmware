@@ -11,7 +11,7 @@
 #include "Throttle.h"
 #include "configuration.h"
 #include "concurrency/OSThread.h"
-#include "gps/Time.h"
+#include "UptimeClock.h"
 #include "main.h"
 #include "mesh/RadioLibInterface.h"
 #include "mesh/SinglePortModule.h"
