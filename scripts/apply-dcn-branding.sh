@@ -38,6 +38,7 @@ fi
 
 "$PY" scripts/merge_userprefs.py
 "$PY" scripts/patch-builder-web.py
+"$PY" scripts/patch-firmware-dcn.py
 
 OPT_SRC=overlay/src/modules/optional
 OPT_DST=firmware/src/modules/optional

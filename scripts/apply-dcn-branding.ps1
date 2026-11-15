@@ -73,6 +73,7 @@ if (Test-Path $logoSrc) {
 }
 
 python (Join-Path (Join-Path $Root "scripts") "patch-builder-web.py")
+python (Join-Path (Join-Path $Root "scripts") "patch-firmware-dcn.py")
 
 $optSrc = Join-Path (Join-Path (Join-Path $Root "overlay") "src") "modules\optional"
 $optDst = Join-Path (Join-Path $Fw "src") "modules\optional"
