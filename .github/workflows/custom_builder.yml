@@ -232,6 +232,8 @@ jobs:
   build-custom-firmware:
     name: Build Custom Firmware
     runs-on: ubuntu-24.04
+    permissions:
+      contents: write
     defaults:
       run:
         working-directory: firmware
@@ -499,12 +501,41 @@ jobs:
           rm -f "$ZIP_NAME"
           echo "ZIP_NAME=$ZIP_NAME.enc" >> "$GITHUB_ENV"
 
+      # upload-artifact resolves paths from $GITHUB_WORKSPACE, not firmware/ (defaults.run.working-directory).
+      - name: Verify firmware bundle exists
+        working-directory: ${{ github.workspace }}
+        run: |
+          if [ ! -f "firmware/$ZIP_NAME" ]; then
+            echo "::error::No se encontró firmware/$ZIP_NAME tras empaquetar."
+            ls -la firmware/*.zip 2>/dev/null || ls -la firmware/
+            exit 1
+          fi
+          ls -lh "firmware/$ZIP_NAME"
+
       - name: Upload Firmware Artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.ZIP_NAME }}
-          path: ${{ env.ZIP_NAME }}
+          path: firmware/${{ env.ZIP_NAME }}
           retention-days: 30
+
+      - name: Publish to GitHub Release (descarga fácil)
+        if: inputs.encrypted_config == ''
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TARGET="${{ steps.target-step.outputs.target }}"
+          REPO="${{ github.repository }}"
+          LATEST="dcn-${TARGET}-latest.zip"
+          cp "$ZIP_NAME" "$LATEST"
+          if ! gh release view dcn-latest --repo "$REPO" >/dev/null 2>&1; then
+            gh release create dcn-latest --repo "$REPO" \
+              --title "DCN — últimos firmware (workflow manual)" \
+              --notes "Builds de **Actions → Build Custom Firmware**. Cada placa tiene un \`dcn-<target>-latest.zip\` actualizado en cada compilación exitosa."
+          fi
+          gh release upload dcn-latest "$ZIP_NAME" "$LATEST" --repo "$REPO" --clobber
+          echo "RELEASE_URL=https://github.com/$REPO/releases/tag/dcn-latest" >> "$GITHUB_ENV"
+          echo "DOWNLOAD_LATEST_URL=https://github.com/$REPO/releases/download/dcn-latest/$LATEST" >> "$GITHUB_ENV"
 
       - name: Generate Job Summary
         run: |
@@ -526,6 +557,9 @@ jobs:
           | **GPS** | \`${{ inputs.gps_mode }}\` |
           | **Archivo** | \`${{ env.ZIP_NAME }}\` |
 
-          Descarga el archivo desde la sección **Artifacts** de esta ejecución.
+          ### Descargar
+
+          1. **Artifacts** (esta ejecución): abre la run y baja \`${{ env.ZIP_NAME }}\`.
+          $(if [ -n "${RELEASE_URL:-}" ]; then echo "2. **Enlace fijo:** [dcn-${TARGET}-latest.zip](${DOWNLOAD_LATEST_URL}) — también en [Release dcn-latest](${RELEASE_URL})."; fi)
           Si es un \`.enc\`, ábrelo con el descifrador del Web Builder (\`decrypt.html\`) en el navegador que lanzó la compilación.
           EOF
