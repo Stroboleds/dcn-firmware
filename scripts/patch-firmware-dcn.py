@@ -74,8 +74,30 @@ def patch_wifi_mdns() -> None:
     print("Patched WiFiAPClient mDNS guards for MESHTASTIC_EXCLUDE_WEBSERVER")
 
 
+def patch_radio_friend() -> None:
+    rl = ROOT / "firmware" / "src" / "mesh" / "RadioLibInterface.h"
+    if not rl.is_file():
+        return
+    text = rl.read_text(encoding="utf-8")
+    if "friend class DcnSpectrumModule" in text:
+        return
+    text = text.replace(
+        "namespace meshtastic { class NexusModule; }",
+        "namespace meshtastic { class NexusModule; }\nclass DcnSpectrumModule;",
+        1,
+    )
+    text = text.replace(
+        "    friend class meshtastic::NexusModule;",
+        "    friend class meshtastic::NexusModule;\n    friend class DcnSpectrumModule;",
+        1,
+    )
+    rl.write_text(text, encoding="utf-8")
+    print("RadioLibInterface: friend DcnSpectrumModule")
+
+
 def main() -> None:
     patch_wifi_mdns()
+    patch_radio_friend()
 
 
 if __name__ == "__main__":

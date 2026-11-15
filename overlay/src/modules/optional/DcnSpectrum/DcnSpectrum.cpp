@@ -1,6 +1,6 @@
 /**
  * DCN EU868 spectrum sweep (863–870 MHz) + texto en pantalla MUI.
- * Activar: mensaje de texto "DCN SPECTRUM" (canal primario o serie local).
+ * Activar: mensaje de texto "DCN SPECTRUM" (canal primario o local).
  */
 #if defined(DCN_SPECTRUM_UI) && DCN_SPECTRUM_UI
 
@@ -21,49 +21,43 @@
 #include <cmath>
 #include <cstring>
 
-namespace
-{
 constexpr float kFreqStartMhz = 863.0f;
 constexpr float kFreqEndMhz = 870.0f;
 constexpr float kStepMhz = 0.25f;
 constexpr int kMaxBins = 32;
 constexpr uint32_t kSettleMs = 18;
 
-float bins[kMaxBins];
-int binCount = 0;
-meshtastic_Config_LoRaConfig loraBackup{};
-bool radioBusy = false;
-bool scanRequested = false;
-bool uiVisible = false;
-uint32_t uiUntil = 0;
+static float bins[kMaxBins];
+static int binCount = 0;
+static meshtastic_Config_LoRaConfig loraBackup{};
+static bool radioBusy = false;
+static bool scanRequested = false;
+static bool uiVisible = false;
+static uint32_t uiUntil = 0;
 
-class DcnSpectrumModule : private concurrency::OSThread, public SinglePortModule
+static void setPayloadText(meshtastic_MeshPacket *p, const char *text)
+{
+    size_t len = strlen(text);
+    if (len > sizeof(p->decoded.payload.bytes))
+        len = sizeof(p->decoded.payload.bytes);
+    memcpy(p->decoded.payload.bytes, text, len);
+    p->decoded.payload.size = len;
+}
+
+class DcnSpectrumModule : public SinglePortModule, private concurrency::OSThread
 {
   public:
     DcnSpectrumModule()
-        : OSThread("DcnSpectrum"), SinglePortModule("dcn-spectrum", meshtastic_PortNum_TEXT_MESSAGE_APP)
+        : SinglePortModule("dcn-spectrum", meshtastic_PortNum_TEXT_MESSAGE_APP), OSThread("DcnSpectrum")
     {
         setIntervalFromNow(200);
-    }
-
-  protected:
-    int32_t runOnce() override
-    {
-        if (scanRequested && !radioBusy) {
-            scanRequested = false;
-            runScan();
-        }
-        if (uiVisible && Throttle::deadlinePassedAt(Time::getMillis(), uiUntil)) {
-            uiVisible = false;
-        }
-        return 250;
     }
 
     ProcessMessage handleReceived(const meshtastic_MeshPacket &mp) override
     {
         if (!isBroadcastOrLocal(mp))
             return ProcessMessage::CONTINUE;
-        auto decoded = mp.decoded;
+        const auto &decoded = mp.decoded;
         if (!decoded.payload.size)
             return ProcessMessage::CONTINUE;
         char buf[160];
@@ -86,6 +80,19 @@ class DcnSpectrumModule : private concurrency::OSThread, public SinglePortModule
         return ProcessMessage::STOP;
     }
 
+  protected:
+    int32_t runOnce() override
+    {
+        if (scanRequested && !radioBusy) {
+            scanRequested = false;
+            runScan();
+        }
+        if (uiVisible && Throttle::deadlinePassedAt(Time::getMillis(), uiUntil)) {
+            uiVisible = false;
+        }
+        return 250;
+    }
+
   private:
     static bool isBroadcastOrLocal(const meshtastic_MeshPacket &mp)
     {
@@ -101,14 +108,14 @@ class DcnSpectrumModule : private concurrency::OSThread, public SinglePortModule
         p->decoded.portnum = meshtastic_PortNum_TEXT_MESSAGE_APP;
         p->want_ack = false;
         p->channel = rx.channel;
-        strncpy(p->decoded.payload.bytes, text, sizeof(p->decoded.payload.bytes) - 1);
-        p->decoded.payload.size = strlen(p->decoded.payload.bytes);
+        setPayloadText(p, text);
         service->sendToMesh(p, RX_SRC_LOCAL, true);
     }
 
     void runScan()
     {
-        if (!RadioLibInterface::instance) {
+        RadioLibInterface *ri = RadioLibInterface::instance;
+        if (!ri) {
             LOG_WARN("DCN spectrum: sin radio");
             return;
         }
@@ -124,8 +131,8 @@ class DcnSpectrumModule : private concurrency::OSThread, public SinglePortModule
             if (service)
                 service->configChanged.notifyObservers(nullptr);
             delay(kSettleMs);
-            float rssi = RadioLibInterface::instance->getInstantaneousRSSI();
-            bins[binCount++] = rssi;
+            ri->updateNoiseFloor();
+            bins[binCount++] = (float)ri->getAverageNoiseFloor();
         }
 
         config.lora = loraBackup;
@@ -171,8 +178,7 @@ class DcnSpectrumModule : private concurrency::OSThread, public SinglePortModule
             *w++ = '\n';
             *w = 0;
         }
-        n = snprintf(w, cap - (size_t)(w - body), "RSSI %.0f..%.0f dBm\nTema UI en dispositivo.",
-                     minR, maxR);
+        n = snprintf(w, cap - (size_t)(w - body), "RSSI %.0f..%.0f dBm\nTema UI en dispositivo.", minR, maxR);
         (void)n;
 
         LOG_INFO("%s", body);
@@ -182,31 +188,18 @@ class DcnSpectrumModule : private concurrency::OSThread, public SinglePortModule
             p->to = NODENUM_BROADCAST;
             p->decoded.portnum = meshtastic_PortNum_TEXT_MESSAGE_APP;
             p->want_ack = false;
-            strncpy(p->decoded.payload.bytes, body, sizeof(p->decoded.payload.bytes) - 1);
-            p->decoded.payload.size = strlen(p->decoded.payload.bytes);
+            setPayloadText(p, body);
             service->sendToMesh(p, RX_SRC_LOCAL, true);
         }
     }
 };
 
-DcnSpectrumModule *dcnSpectrumModule;
+static DcnSpectrumModule *dcnSpectrumModule;
 
 void setupDcnSpectrum()
 {
     dcnSpectrumModule = new DcnSpectrumModule();
     LOG_INFO("DCN Spectrum EU868 listo (DCN SPECTRUM)");
-}
-
-bool dcnSpectrumUiActive()
-{
-    return uiVisible;
-}
-
-const float *dcnSpectrumBins(int *count)
-{
-    if (count)
-        *count = binCount;
-    return bins;
 }
 
 #else
