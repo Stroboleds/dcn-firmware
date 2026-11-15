@@ -135,6 +135,22 @@ def patch_page_copy(cfg: dict, path: Path) -> None:
     path.write_text(text, encoding="utf-8")
 
 
+def bust_es_module_imports(cfg: dict) -> None:
+    """Query-string cache bust so browsers reload JS after a bad cached module."""
+    rev = str(cfg.get("web_asset_rev", "1"))
+    for rel in ("flasher.html", "update.html", "builder.html", "decrypt.html"):
+        path = WEB / rel
+        if not path.is_file():
+            continue
+        text = path.read_text(encoding="utf-8")
+        text = re.sub(
+            r'from "\./([^"?]+\.js)(\?v=[^"]*)?"',
+            rf'from "./\1?v={rev}"',
+            text,
+        )
+        path.write_text(text, encoding="utf-8")
+
+
 def sweep_upstream_refs(cfg: dict) -> None:
     owner, name = cfg["repo_owner"], cfg["repo_name"]
     pages = cfg["pages_base"].rstrip("/")
@@ -176,6 +192,7 @@ def main() -> None:
             inject_assets(path)
             patch_page_copy(cfg, path)
     sweep_upstream_refs(cfg)
+    bust_es_module_imports(cfg)
     print(
         f"Web DCN → {cfg['repo_owner']}/{cfg['repo_name']} "
         f"(landing propia; temas de color solo en dispositivo)"
