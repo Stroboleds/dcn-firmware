@@ -1,0 +1,56 @@
+name: Deploy Cell-Mesh / DCN Builder (GitHub Pages)
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "firmware/custom_builder_web/**"
+      - "overlay/**"
+      - "scripts/apply-dcn-branding.sh"
+      - "scripts/patch-builder-web.py"
+      - "branding/**"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages-dcn
+  cancel-in-progress: true
+
+jobs:
+  deploy-pages:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Apply DCN branding
+        run: bash scripts/apply-dcn-branding.sh
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Add the latest release firmware
+        env:
+          GH_TOKEN: ${{ github.token }}
+        working-directory: firmware
+        run: bin/pages-firmware.sh custom_builder_web/firmware
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: firmware/custom_builder_web
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -8,9 +8,8 @@ Firmware y documentación para **Dual-Cell-Net (DCN)**: marca propia sobre base 
 
 | Fase | Descripción |
 |------|-------------|
-| 🟡 En curso | Repo de proyecto, identidad de marca, integración upstream |
-| ⬜ Pendiente | Fork/branding en árbol de firmware |
-| ⬜ Pendiente | Build validado `t-deck` EU868 |
+| 🟢 Listo | CI en GitHub (`custom_builder.yml`, `pages.yml`) + builder web Cell-Mesh |
+| 🟡 En curso | Build validado `dcn-t-deck` EU868 (probar en Actions/Linux) |
 | ⬜ Pendiente | Módulo Spectrum (863–870 MHz, extensible) |
 
 ## Requisitos de hardware
@@ -69,7 +68,9 @@ Sustituye `COMx` por el puerto serie correcto.
 1. **Branding DCN** — splash, “About”, metadatos de build (sin eliminar atribución Meshtastic® / MeshCore).
 2. **Meshtastic + MeshCore** — heredar comportamiento meshtacore en 868 MHz.
 3. **Analizador de espectro** — barrido SX1262 (`GET_RSSI_INST`), preset **863–870 MHz**, modos espectro/waterfall en pantalla T-Deck.
-4. **Builder / releases** — binarios etiquetados DCN (opcional, fork del builder meshtacore).
+4. **Builder / releases** — ver [docs/GITHUB-BUILDER.md](docs/GITHUB-BUILDER.md) (Pages + compilación por usuario).
+
+> **Repo público solo DCN/Cell-Mesh.** Proyectos no relacionados (p. ej. TETRA) no van aquí.
 
 ## Licencia y marcas
 

@@ -1,0 +1,531 @@
+name: Build Custom Firmware (DCN / Cell-Mesh)
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        type: choice
+        description: "Placa objetivo (o 'custom' para especificarla abajo)"
+        options:
+          - heltec-mesh-node-t114
+          - rak4631
+          - rak3401-1watt
+          - rak_wismesh_pocket
+          - rak_wismesh_pod
+          - rak_wismeshtag
+          - rak_wismesh_repeater_mini
+          - rak_wismesh_repeater_mini_hp
+          - seeed_xiao_nrf52840_kit
+          - seeed_mesh_tracker_X1
+          - seeed_solar_node
+          - seeed_wio_tracker_L1
+          - t-echo
+          - t-echo-plus
+          - t-echo-lite
+          - t-impulse-plus
+          - tracker-t1000-e
+          - wio-tracker-wm1110
+          - thinknode_m1
+          - gat562_mesh_trial_tracker
+          - nrf52_promicro_diy_tcxo
+          - nrf52_promicro_diy_sx1262
+          - nrf52_promicro_diy_sx1262-noscreen
+          - heltec-v3
+          - heltec-v4
+          - heltec-v4-tft
+          - heltec-v4-r8-oled
+          - heltec-v4-r8-tft
+          - heltec-wireless-paper
+          - heltec-wireless-tracker
+          - heltec-wireless-tracker-v2
+          - heltec-wsl-v3
+          - heltec-vision-master-e213
+          - heltec-vision-master-e290
+          - heltec-vision-master-t190
+          - t-deck
+          - t-deck-tft
+          - dcn-t-deck
+          - t-deck-pro
+          - t-deck-pro-v1_1
+          - t-watch-s3
+          - t-watch-ultra
+          - tbeam-s3-core
+          - tlora-t3s3-v1
+          - tlora-t3s3-epaper
+          - t5s3-epaper-v1
+          - t5s3-epaper-v2
+          - t5s3_epaper_inkhud
+          - station-g2
+          - station-g3
+          - rak3312
+          - rak_wismesh_tap_v2
+          - rak_wismesh_tap_v2-tft
+          - seeed-xiao-s3
+          - seeed_wio_tracker_L2-tft
+          - seeed-sensecap-indicator
+          - seeed-sensecap-indicator-tft
+          - elecrow-adv-24-28-tft
+          - elecrow-adv-35-tft
+          - elecrow-adv1-43-50-70-tft
+          - mini-epaper-s3
+          - picomputer-s3
+          - picomputer-s3-tft
+          - thinknode_m2
+          - thinknode_m5
+          - thinknode_m9
+          - thinknode_m9-tft
+          - tlora-pager
+          - tracksenger
+          - tracksenger-lcd
+          - tracksenger-oled
+          - CDEBYTE_EoRa-S3
+          - axiometa-genesis-mini
+          - meshnology_w10
+          - meshnology_w12
+          - t-connect-pro
+          - unphone
+          - tbeam
+          - t-beam-1w
+          - t-beam-bpf
+          - tlora-v2-1-1_6
+          - heltec-ht62-esp32c3-sx1262
+          - heltec-rc32
+          - heltec-rcc6
+          - m5stack-unitc6l
+          - picow
+          - custom
+        default: heltec-v3
+      custom_target:
+        type: string
+        required: false
+        default: ""
+        description: "Nombre de placa custom (si seleccionaste 'custom')"
+      owner_long_name:
+        type: string
+        required: false
+        default: ""
+        description: "Nombre largo (deja vacío para auto-generar con la MAC del nodo)"
+      owner_short_name:
+        type: string
+        required: false
+        default: ""
+        description: "Nombre corto (deja vacío para auto-generar con la MAC del nodo)"
+      has_screen:
+        type: boolean
+        required: false
+        default: true
+        description: "Pantalla activa (desmarca para nodos headless)"
+      device_role:
+        type: choice
+        description: "Rol del dispositivo (ROUTER solo se aplica si la petición lleva USERPREFS_ALLOW_ROUTER_ROLE: lo añade el builder web en el perfil solar)"
+        options:
+          - CLIENT
+          - CLIENT_BASE
+          - CLIENT_MUTE
+          - ROUTER
+        default: CLIENT
+      lora_region:
+        type: choice
+        description: "Región LoRa"
+        options:
+          - EU_868
+          - US
+          - EU_433
+          - ANZ
+          - IN
+          - LORA_24
+        default: EU_868
+      lora_preset_mode:
+        type: choice
+        description: "Preset LoRa (custom_sfnarrow_default = 869.618MHz, BW 62.5, SF 7, CR 4/6, TX 22dBm, Hop 7)"
+        options:
+          - custom_sfnarrow_default
+          - modem_preset_long_fast
+          - modem_preset_medium_fast
+          - modem_preset_short_fast
+        default: custom_sfnarrow_default
+      channels_preset:
+        type: choice
+        description: "Preset de canales (repo_default = 5 Canales comunitarios + MeshCore)"
+        options:
+          - repo_default_5_channels
+          - single_channel_default
+        default: repo_default_5_channels
+      enable_bluetooth:
+        type: boolean
+        required: false
+        default: true
+        description: "Bluetooth activado"
+      enable_meshcore:
+        type: boolean
+        required: false
+        default: true
+        description: "Habilitar subsistema MeshCore (Sniffer, Relay y SyncWord 0x14B4)"
+      nexus_base_texts:
+        type: boolean
+        required: false
+        default: true
+        description: "Rebroadcast forzado de textos (Base Texts) activado por defecto"
+      nexus_master_key:
+        type: string
+        required: false
+        default: ""
+        description: "Master Key Nexus (eevee, bloom, mew, fennekin o clave pública)"
+      mqtt_address:
+        type: string
+        required: false
+        default: "mqtt.meshtastic.es"
+        description: "Servidor MQTT comunitario"
+      gps_mode:
+        type: choice
+        description: "Modo GPS"
+        options:
+          - ENABLED
+          - DISABLED
+          - NOT_PRESENT
+        default: ENABLED
+      fixed_latitude:
+        type: string
+        required: false
+        default: ""
+        description: "Latitud fija (opcional, ej. 41.3879)"
+      fixed_longitude:
+        type: string
+        required: false
+        default: ""
+        description: "Longitud fija (opcional, ej. 2.1699)"
+      fixed_altitude:
+        type: string
+        required: false
+        default: ""
+        description: "Altitud fija (metros, ej. 55)"
+      wifi_ssid:
+        type: string
+        required: false
+        default: ""
+        description: "SSID WiFi (solo ESP32)"
+      wifi_password:
+        type: string
+        required: false
+        default: ""
+        description: "Contraseña WiFi"
+      encrypted_config:
+        type: string
+        required: false
+        default: ""
+        description: "Configuración cifrada generada por el Web Builder (no editar)"
+      custom_userprefs_json:
+        type: string
+        required: false
+        default: ""
+        description: "Configuración completa en JSON (generada desde Web Builder)"
+      extra_build_flags:
+        type: string
+        required: false
+        default: ""
+        description: "Flags adicionales para compilador"
+
+permissions:
+  contents: read
+
+jobs:
+  build-custom-firmware:
+    name: Build Custom Firmware
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: firmware
+    env:
+      IDF_COMPONENT_MANAGER: "0"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Apply DCN branding
+        working-directory: ${{ github.workspace }}
+        run: bash scripts/apply-dcn-branding.sh
+
+      - name: Setup Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Resolve target board
+        id: target-step
+        run: |
+          SELECTED="${{ inputs.target }}"
+          CUSTOM="${{ inputs.custom_target }}"
+          if [ "$SELECTED" = "custom" ]; then
+            if [ -z "$CUSTOM" ]; then
+              echo "::error::Has seleccionado 'custom' pero no has especificado custom_target."
+              exit 1
+            fi
+            TARGET="$CUSTOM"
+          else
+            TARGET="$SELECTED"
+          fi
+          echo "target=$TARGET" >> "$GITHUB_OUTPUT"
+
+      - name: Install PlatformIO and Dependencies
+        run: |
+          pip install -U "platformio==6.2.0" jq
+          mkdir -p "$HOME/.platformio/packages"
+          echo '{"last_version": "6.2.0", "last_check": {"platformio_upgrade": 2147483647, "prune_system": 2147483647}}' > "$HOME/.platformio/appstate.json"
+          if [ ! -f "$HOME/.platformio/penv/bin/python" ] || ! "$HOME/.platformio/penv/bin/python" -c "import pioarduino; assert pioarduino.__version__ == '6.2.0'" 2>/dev/null; then
+            rm -rf "$HOME/.platformio/penv"
+            python -m venv "$HOME/.platformio/penv"
+            "$HOME/.platformio/penv/bin/pip" install --upgrade "uv>=0.1.0"
+            "$HOME/.platformio/penv/bin/pip" install "pioarduino==6.2.0" "platformio==6.2.0"
+          fi
+
+      - name: Resolve Architecture
+        id: arch-step
+        run: |
+          TARGET="${{ steps.target-step.outputs.target }}"
+          ALL_TARGETS=$(~/.platformio/penv/bin/python ./bin/generate_ci_matrix.py all --level extra)
+          ARCH=$(echo "$ALL_TARGETS" | jq --arg T "$TARGET" -r '.[] | select(.board==$T) | .platform')
+          if [ -z "$ARCH" ] || [ "$ARCH" = "null" ]; then
+            echo "::error::No se pudo determinar la arquitectura para la placa '$TARGET'. Revisa platformio.ini."
+            exit 1
+          fi
+          echo "arch=$ARCH" >> "$GITHUB_OUTPUT"
+          echo "Target '$TARGET' pertenece a la arquitectura: $ARCH"
+
+      - name: Cache PlatformIO packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.platformio
+          key: pio620-py312-${{ runner.os }}-${{ steps.arch-step.outputs.arch }}-${{ hashFiles('platformio.ini') }}
+          restore-keys: |
+            pio620-py312-${{ runner.os }}-${{ steps.arch-step.outputs.arch }}-
+
+      - name: Guard against gutted tool-scons cache
+        run: |
+          TS="$HOME/.platformio/packages/tool-scons"
+          if [ -d "$TS" ] && ! find "$TS" -name FortranCommon.py -print -quit | grep -q .; then
+            echo "tool-scons present but gutted - removing for clean reinstall"
+            rm -rf "$TS"
+          else
+            echo "tool-scons OK or absent (PIO installs on demand)"
+          fi
+
+      - name: Lock PlatformIO and ESP32 penv to 6.2.0
+        run: |
+          mkdir -p "$HOME/.platformio/packages"
+          echo '{"last_version": "6.2.0", "last_check": {"platformio_upgrade": 2147483647, "prune_system": 2147483647}}' > "$HOME/.platformio/appstate.json"
+          pip install -U "platformio==6.2.0"
+          if [ ! -f "$HOME/.platformio/penv/bin/python" ] || ! "$HOME/.platformio/penv/bin/python" -c "import pioarduino; assert pioarduino.__version__ == '6.2.0'" 2>/dev/null; then
+            echo "Pre-creating ~/.platformio/penv pinned to 6.2.0..."
+            rm -rf "$HOME/.platformio/penv"
+            python -m venv "$HOME/.platformio/penv"
+            "$HOME/.platformio/penv/bin/pip" install --upgrade "uv>=0.1.0"
+            "$HOME/.platformio/penv/bin/pip" install "pioarduino==6.2.0" "platformio==6.2.0"
+          fi
+          printf '%s\n' 'pioarduino==6.2.0' 'platformio==6.2.0' > "$HOME/.platformio/constraints.txt"
+          echo "UV_CONSTRAINT=$HOME/.platformio/constraints.txt" >> "$GITHUB_ENV"
+          echo "PIP_CONSTRAINT=$HOME/.platformio/constraints.txt" >> "$GITHUB_ENV"
+          if [ -d "$HOME/.platformio/packages/tool-scons" ]; then
+            touch "$HOME/.platformio/packages/tool-scons/.piokeep"
+          fi
+
+      - name: Decrypt request from Web Builder
+        if: inputs.encrypted_config != ''
+        env:
+          BUILD_REQUEST_B64: ${{ inputs.encrypted_config }}
+          BUILD_PRIVATE_KEY: ${{ secrets.BUILD_PRIVATE_KEY }}
+        run: |
+          pip install --quiet cryptography
+          python3 .github/scripts/build_crypto.py decrypt-request
+
+      - name: Generate tailored userPrefs.jsonc
+        env:
+          LEGACY_CUSTOM_USERPREFS_JSON: ${{ inputs.custom_userprefs_json }}
+          WIFI_PASSWORD: ${{ inputs.wifi_password }}
+          NEXUS_MASTER_KEY: ${{ inputs.nexus_master_key }}
+        run: |
+          if [ -f requested_userprefs.json ]; then
+            CUSTOM_JSON="$(cat requested_userprefs.json)"
+          else
+            CUSTOM_JSON="$LEGACY_CUSTOM_USERPREFS_JSON"
+          fi
+          python3 .github/scripts/generate_custom_userprefs.py \
+            --file userPrefs.jsonc \
+            --output userPrefs.jsonc \
+            --owner-long-name "${{ inputs.owner_long_name }}" \
+            --owner-short-name "${{ inputs.owner_short_name }}" \
+            --has-screen "${{ inputs.has_screen }}" \
+            --enable-bluetooth "${{ inputs.enable_bluetooth }}" \
+            --enable-meshcore "${{ inputs.enable_meshcore }}" \
+            --nexus-base-texts "${{ inputs.nexus_base_texts }}" \
+            --nexus-master-key "$NEXUS_MASTER_KEY" \
+            --device-role "${{ inputs.device_role }}" \
+            --lora-region "${{ inputs.lora_region }}" \
+            --lora-preset-mode "${{ inputs.lora_preset_mode }}" \
+            --channels-preset "${{ inputs.channels_preset }}" \
+            --mqtt-address "${{ inputs.mqtt_address }}" \
+            --wifi-ssid "${{ inputs.wifi_ssid }}" \
+            --wifi-password "$WIFI_PASSWORD" \
+            --gps-mode "${{ inputs.gps_mode }}" \
+            --fixed-latitude "${{ inputs.fixed_latitude }}" \
+            --fixed-longitude "${{ inputs.fixed_longitude }}" \
+            --fixed-altitude "${{ inputs.fixed_altitude }}" \
+            --custom-userprefs-json "$CUSTOM_JSON"
+
+      - name: Setup ccache
+        run: |
+          # The toolchain compilers are replaced by a ccache wrapper (.github/scripts/pio_ccache_wrap.sh), which
+          # works on ESP32 too (a CC/CXX prefix breaks ESP-IDF). The toolchain has to be on disk first.
+          # userPrefs -D flags only reach src/: direct mode misses those files and falls back to the preprocessor
+          # mode, so framework, libs and most of src/ still hit.
+          command -v ccache >/dev/null || sudo apt-get install -y -qq ccache
+          pio pkg install -e "${{ steps.target-step.outputs.target }}"
+          bash .github/scripts/pio_ccache_wrap.sh
+          {
+            echo "CCACHE_DIR=$HOME/.ccache"
+            echo "CCACHE_BASEDIR=$GITHUB_WORKSPACE"
+            echo "CCACHE_MAXSIZE=600M"
+          } >> "$GITHUB_ENV"
+
+      - name: Restore ccache
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/.ccache
+          key: ccache-${{ steps.arch-step.outputs.arch }}-${{ steps.target-step.outputs.target }}-${{ github.run_id }}
+          restore-keys: |
+            ccache-${{ steps.arch-step.outputs.arch }}-${{ steps.target-step.outputs.target }}-
+
+      - name: Reset ccache counters
+        # The restored cache carries the counters of every earlier run; zero them so "ccache stats" below
+        # counts only this build and the save threshold means what it says.
+        run: ccache -z
+
+      - name: Compile Custom Firmware
+        env:
+          PLATFORMIO_BUILD_FLAGS: "-DHAS_NEXUS=1 -DAPP_REPO=\\\"meshtacore-firmware\\\" ${{ inputs.extra_build_flags }}"
+          PIP_BREAK_SYSTEM_PACKAGES: "1"
+        run: |
+          TARGET="${{ steps.target-step.outputs.target }}"
+          ARCH="${{ steps.arch-step.outputs.arch }}"
+          case "$ARCH" in
+            esp32|esp32s3|esp32c3|esp32c6) SCRIPT=bin/build-esp32.sh ;;
+            nrf52840)                      SCRIPT=bin/build-nrf52.sh ;;
+            nrf54l15)                      SCRIPT=bin/build-nrf54l15.sh ;;
+            rp2040|rp2350)                 SCRIPT=bin/build-rp2xx0.sh ;;
+            stm32)                         SCRIPT=bin/build-stm32wl.sh ;;
+            *)
+              echo "::error::Arquitectura '$ARCH' no soportada directamente por los scripts de empaquetado."
+              exit 1
+              ;;
+          esac
+          echo "Compilando $TARGET con $SCRIPT..."
+          bash "$SCRIPT" "$TARGET"
+
+      - name: ccache stats
+        id: ccache-stats
+        run: |
+          ccache -s || true
+          MISSES="$(ccache --print-stats 2>/dev/null | awk -F'\t' '$1=="cache_miss"{print $2}')"
+          echo "ccache misses: ${MISSES:-unknown}"
+          # Only store a new cache entry when this run compiled a meaningful amount of new code.
+          if [ "${MISSES:-0}" -gt 25 ]; then echo "save=true" >> "$GITHUB_OUTPUT"; fi
+
+      - name: Save ccache
+        if: steps.ccache-stats.outputs.save == 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ~/.ccache
+          key: ccache-${{ steps.arch-step.outputs.arch }}-${{ steps.target-step.outputs.target }}-${{ github.run_id }}
+
+      - name: Add OTA Loader to the bundle
+        run: bash .github/scripts/fetch_ota_loader.sh "${{ steps.arch-step.outputs.arch }}"
+
+      - name: Prepare Release Bundle
+        run: |
+          TARGET="${{ steps.target-step.outputs.target }}"
+          mkdir -p release
+          cp userPrefs.jsonc release/config_used.jsonc
+
+          cat << 'EOF' > release/FLASHING_INSTRUCTIONS.txt
+          ===================================================================
+          MESHTASTIC CUSTOM FIRMWARE BUNDLE
+          ===================================================================
+
+          Este archivo contiene el firmware compilado con tus ajustes integrados.
+          Estos ajustes se cargan automáticamente en el primer arranque y TRAS CUALQUIER
+          FACTORY RESET (los valores residen directamente en la compilación).
+
+          CÓMO FLASHEAR:
+          --------------
+          1. Dispositivos nRF52 (RAK4631, Heltec T114, T-Echo, T1000-E...):
+             - Conecta el dispositivo por USB.
+             - Haz doble clic rápido en el botón RESET para entrar en modo bootloader.
+             - Aparecerá una unidad de almacenamiento USB en tu ordenador.
+             - Copia el archivo .uf2 a esa unidad. El nodo se reiniciará automáticamente.
+
+          2. Dispositivos ESP32 (Heltec V3/V4, T-Beam, Station G2...):
+             - Opción Web (la más simple): abre
+               https://stroboleds.github.io/dcn-firmware/flasher.html
+               en Chrome o Edge de escritorio, elige este .zip tal cual y pulsa el botón.
+               Escribe también el OTA Loader.
+             - Opción Script (este .zip trae todo lo necesario): descomprime y, en esa carpeta:
+               En Linux/macOS: ./device-install.sh -f firmware-*.factory.bin
+               En Windows:     device-install.bat -f firmware-*.factory.bin   (necesita Python con esptool)
+             - No escribas el .factory.bin a mano con esptool: sin el OTA Loader (mt-*-ota.bin
+               en ota_1) la placa no se podrá actualizar por Bluetooth.
+
+          ACTUALIZAR MÁS ADELANTE POR BLUETOOTH (ESP32):
+          ----------------------------------------------
+          En la app de Meshtastic, Ajustes > Actualización de firmware, elige el
+          firmware-*.bin SIN "factory" en el nombre. El .factory.bin solo vale por cable.
+
+          ===================================================================
+          EOF
+
+          TIMESTAMP=$(date +'%Y%m%d_%H%M%S')
+          ZIP_NAME="meshtastic-custom-${TARGET}-${TIMESTAMP}.zip"
+          echo "ZIP_NAME=$ZIP_NAME" >> "$GITHUB_ENV"
+          cd release
+          zip -9 -r "../$ZIP_NAME" ./*
+          cd ..
+
+      - name: Encrypt Bundle for the Requester
+        if: inputs.encrypted_config != ''
+        run: |
+          # Artifacts of a public repo are downloadable by anyone: only the requester's browser can open this.
+          python3 .github/scripts/build_crypto.py encrypt-file --in "$ZIP_NAME" --out "$ZIP_NAME.enc"
+          rm -f "$ZIP_NAME"
+          echo "ZIP_NAME=$ZIP_NAME.enc" >> "$GITHUB_ENV"
+
+      - name: Upload Firmware Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.ZIP_NAME }}
+          path: ${{ env.ZIP_NAME }}
+          retention-days: 30
+
+      - name: Generate Job Summary
+        run: |
+          TARGET="${{ steps.target-step.outputs.target }}"
+          ARCH="${{ steps.arch-step.outputs.arch }}"
+          cat << EOF >> "$GITHUB_STEP_SUMMARY"
+          ## 🚀 Firmware Personalizado Generado con Éxito
+
+          | Parámetro | Valor |
+          | :--- | :--- |
+          | **Placa** | \`$TARGET\` (\`$ARCH\`) |
+          | **Nombre Nodo** | \`${{ inputs.owner_long_name }}\` (\`${{ inputs.owner_short_name }}\`) |
+          | **Pantalla activa** | \`${{ inputs.has_screen }}\` |
+          | **Bluetooth** | \`${{ inputs.enable_bluetooth }}\` |
+          | **Rol** | \`${{ inputs.device_role }}\` |
+          | **Región LoRa** | \`${{ inputs.lora_region }}\` |
+          | **Preset Módem** | \`${{ inputs.lora_preset_mode }}\` |
+          | **Canales** | \`${{ inputs.channels_preset }}\` |
+          | **GPS** | \`${{ inputs.gps_mode }}\` |
+          | **Archivo** | \`${{ env.ZIP_NAME }}\` |
+
+          Descarga el archivo desde la sección **Artifacts** de esta ejecución.
+          Si es un \`.enc\`, ábrelo con el descifrador del Web Builder (\`decrypt.html\`) en el navegador que lanzó la compilación.
+          EOF

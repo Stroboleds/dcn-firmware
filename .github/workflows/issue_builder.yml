@@ -1,0 +1,395 @@
+name: Issue Firmware Builder Bot
+
+on:
+  issues:
+    types: [opened, reopened, labeled]
+
+permissions:
+  contents: write
+  issues: write
+  actions: read
+
+jobs:
+  build-from-issue:
+    name: Build Custom Firmware from Issue
+    if: (contains(github.event.issue.title, '[Build Request]') || contains(github.event.issue.body, 'meshtacore-build-config')) && !contains(github.event.issue.labels.*.name, 'build-completed')
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: firmware
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      IDF_COMPONENT_MANAGER: "0"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Apply DCN branding
+        working-directory: ${{ github.workspace }}
+        run: bash scripts/apply-dcn-branding.sh
+
+      - name: Setup Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Check Rate Limit (Max 6 builds/user per 24 hours)
+        id: rate-limit
+        run: |
+          ACTOR="${{ github.actor }}"
+          ISSUE_NUM="${{ github.event.issue.number }}"
+          REPO="${{ github.repository }}"
+          ONE_DAY_AGO=$(date -u -d '24 hours ago' +%Y-%m-%dT%H:%M:%SZ)
+
+          echo "Checking recent requests for user: $ACTOR"
+          COUNT=$(gh issue list --repo "$REPO" --author "$ACTOR" --state all --limit 30 --json createdAt,number | jq --arg D "$ONE_DAY_AGO" '[.[] | select(.number != ('"$ISSUE_NUM"') and .createdAt >= $D)] | length')
+          echo "Recent issues in last 24h: $COUNT"
+
+          if [ "$COUNT" -ge 6 ]; then
+            echo "limit_exceeded=true" >> "$GITHUB_OUTPUT"
+            gh issue comment "$ISSUE_NUM" --repo "$REPO" --body "⚠️ Hola @$ACTOR, has alcanzado el límite de 6 compilaciones en las últimas 24 horas para preservar los recursos de CI de la comunidad. Por favor, vuelve a intentarlo mañana."
+            gh issue edit "$ISSUE_NUM" --repo "$REPO" --add-label "rate-limited"
+            gh issue close "$ISSUE_NUM" --repo "$REPO" --reason "not planned"
+            exit 0
+          else
+            echo "limit_exceeded=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Acknowledge Build Request
+        if: steps.rate-limit.outputs.limit_exceeded != 'true'
+        run: |
+          ISSUE_NUM="${{ github.event.issue.number }}"
+          REPO="${{ github.repository }}"
+          RUN_URL="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          gh issue edit "$ISSUE_NUM" --repo "$REPO" --add-label "build-in-progress" || true
+          gh issue comment "$ISSUE_NUM" --repo "$REPO" --body "⏳ **Solicitud recibida.** Compilando tu firmware personalizado en GitHub Actions... Puedes seguir el progreso en vivo aquí: [Ver ejecución]($RUN_URL)."
+
+      - name: Parse Issue Configuration
+        id: parse-step
+        if: steps.rate-limit.outputs.limit_exceeded != 'true'
+        env:
+          ISSUE_BODY: ${{ github.event.issue.body }}
+          BUILD_PRIVATE_KEY: ${{ secrets.BUILD_PRIVATE_KEY }}
+        run: |
+          pip install --quiet cryptography
+          python3 .github/scripts/parse_issue_build.py
+
+      - name: Handle Invalid Configuration
+        if: steps.rate-limit.outputs.limit_exceeded != 'true' && steps.parse-step.outputs.valid != 'true'
+        env:
+          MSG: ${{ steps.parse-step.outputs.error_message }}
+        run: |
+          ISSUE_NUM="${{ github.event.issue.number }}"
+          REPO="${{ github.repository }}"
+          gh issue comment "$ISSUE_NUM" --repo "$REPO" --body "❌ **Error en la solicitud:** $MSG"
+          gh issue edit "$ISSUE_NUM" --repo "$REPO" --add-label "build-failed" || true
+          gh issue close "$ISSUE_NUM" --repo "$REPO" --reason "not planned"
+          exit 1
+
+      - name: Install PlatformIO and Dependencies
+        if: steps.rate-limit.outputs.limit_exceeded != 'true' && steps.parse-step.outputs.valid == 'true'
+        run: |
+          pip install -U "platformio==6.2.0" jq
+          mkdir -p "$HOME/.platformio/packages"
+          echo '{"last_version": "6.2.0", "last_check": {"platformio_upgrade": 2147483647, "prune_system": 2147483647}}' > "$HOME/.platformio/appstate.json"
+          if [ ! -f "$HOME/.platformio/penv/bin/python" ] || ! "$HOME/.platformio/penv/bin/python" -c "import pioarduino; assert pioarduino.__version__ == '6.2.0'" 2>/dev/null; then
+            rm -rf "$HOME/.platformio/penv"
+            python -m venv "$HOME/.platformio/penv"
+            "$HOME/.platformio/penv/bin/pip" install --upgrade "uv>=0.1.0"
+            "$HOME/.platformio/penv/bin/pip" install "pioarduino==6.2.0" "platformio==6.2.0"
+          fi
+
+      - name: Resolve Architecture
+        id: arch-step
+        if: steps.rate-limit.outputs.limit_exceeded != 'true' && steps.parse-step.outputs.valid == 'true'
+        env:
+          TARGET: ${{ steps.parse-step.outputs.target }}
+        run: |
+          ALL_TARGETS=$(~/.platformio/penv/bin/python ./bin/generate_ci_matrix.py all --level extra)
+          ARCH=$(echo "$ALL_TARGETS" | jq --arg T "$TARGET" -r '.[] | select(.board==$T) | .platform')
+          if [ -z "$ARCH" ] || [ "$ARCH" = "null" ]; then
+            echo "::error::No se pudo determinar la arquitectura para la placa '$TARGET'."
+            exit 1
+          fi
+          echo "arch=$ARCH" >> "$GITHUB_OUTPUT"
+          echo "Target '$TARGET' pertenece a la arquitectura: $ARCH"
+
+      - name: Cache PlatformIO packages
+        if: steps.rate-limit.outputs.limit_exceeded != 'true' && steps.parse-step.outputs.valid == 'true'
+        uses: actions/cache@v4
+        with:
+          path: ~/.platformio
+          key: pio620-py312-${{ runner.os }}-${{ steps.arch-step.outputs.arch }}-${{ hashFiles('platformio.ini') }}
+          restore-keys: |
+            pio620-py312-${{ runner.os }}-${{ steps.arch-step.outputs.arch }}-
+
+      - name: Guard against gutted tool-scons cache
+        if: steps.rate-limit.outputs.limit_exceeded != 'true' && steps.parse-step.outputs.valid == 'true'
+        run: |
+          TS="$HOME/.platformio/packages/tool-scons"
+          if [ -d "$TS" ] && ! find "$TS" -name FortranCommon.py -print -quit | grep -q .; then
+            echo "tool-scons present but gutted - removing for clean reinstall"
+            rm -rf "$TS"
+          else
+            echo "tool-scons OK or absent (PIO installs on demand)"
+          fi
+
+      - name: Lock PlatformIO and ESP32 penv to 6.2.0
+        if: steps.rate-limit.outputs.limit_exceeded != 'true' && steps.parse-step.outputs.valid == 'true'
+        run: |
+          mkdir -p "$HOME/.platformio/packages"
+          echo '{"last_version": "6.2.0", "last_check": {"platformio_upgrade": 2147483647, "prune_system": 2147483647}}' > "$HOME/.platformio/appstate.json"
+          pip install -U "platformio==6.2.0"
+          if [ ! -f "$HOME/.platformio/penv/bin/python" ] || ! "$HOME/.platformio/penv/bin/python" -c "import pioarduino; assert pioarduino.__version__ == '6.2.0'" 2>/dev/null; then
+            echo "Pre-creating ~/.platformio/penv pinned to 6.2.0..."
+            rm -rf "$HOME/.platformio/penv"
+            python -m venv "$HOME/.platformio/penv"
+            "$HOME/.platformio/penv/bin/pip" install --upgrade "uv>=0.1.0"
+            "$HOME/.platformio/penv/bin/pip" install "pioarduino==6.2.0" "platformio==6.2.0"
+          fi
+          printf '%s\n' 'pioarduino==6.2.0' 'platformio==6.2.0' > "$HOME/.platformio/constraints.txt"
+          echo "UV_CONSTRAINT=$HOME/.platformio/constraints.txt" >> "$GITHUB_ENV"
+          echo "PIP_CONSTRAINT=$HOME/.platformio/constraints.txt" >> "$GITHUB_ENV"
+          if [ -d "$HOME/.platformio/packages/tool-scons" ]; then
+            touch "$HOME/.platformio/packages/tool-scons/.piokeep"
+          fi
+
+      - name: Generate tailored userPrefs.jsonc
+        if: steps.rate-limit.outputs.limit_exceeded != 'true' && steps.parse-step.outputs.valid == 'true'
+        run: |
+          python3 .github/scripts/generate_custom_userprefs.py \
+            --file userPrefs.jsonc \
+            --output userPrefs.jsonc \
+            --custom-userprefs-json "$(cat requested_userprefs.json)"
+
+      - name: Setup ccache
+        if: steps.rate-limit.outputs.limit_exceeded != 'true' && steps.parse-step.outputs.valid == 'true'
+        run: |
+          # The toolchain compilers are replaced by a ccache wrapper (.github/scripts/pio_ccache_wrap.sh), which
+          # works on ESP32 too (a CC/CXX prefix breaks ESP-IDF). The toolchain has to be on disk first.
+          # userPrefs -D flags only reach src/: direct mode misses those files and falls back to the preprocessor
+          # mode, so framework, libs and most of src/ still hit.
+          command -v ccache >/dev/null || sudo apt-get install -y -qq ccache
+          pio pkg install -e "${{ steps.parse-step.outputs.target }}"
+          bash .github/scripts/pio_ccache_wrap.sh
+          {
+            echo "CCACHE_DIR=$HOME/.ccache"
+            echo "CCACHE_BASEDIR=$GITHUB_WORKSPACE"
+            echo "CCACHE_MAXSIZE=600M"
+          } >> "$GITHUB_ENV"
+
+      - name: Restore ccache
+        if: steps.rate-limit.outputs.limit_exceeded != 'true' && steps.parse-step.outputs.valid == 'true'
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/.ccache
+          key: ccache-${{ steps.arch-step.outputs.arch }}-${{ steps.parse-step.outputs.target }}-${{ github.run_id }}
+          restore-keys: |
+            ccache-${{ steps.arch-step.outputs.arch }}-${{ steps.parse-step.outputs.target }}-
+
+      - name: Reset ccache counters
+        if: steps.rate-limit.outputs.limit_exceeded != 'true' && steps.parse-step.outputs.valid == 'true'
+        # The restored cache carries the counters of every earlier run; zero them so "ccache stats" below
+        # counts only this build and the save threshold means what it says.
+        run: ccache -z
+
+      - name: Compile Custom Firmware
+        if: steps.rate-limit.outputs.limit_exceeded != 'true' && steps.parse-step.outputs.valid == 'true'
+        env:
+          PLATFORMIO_BUILD_FLAGS: "-DHAS_NEXUS=1 -DAPP_REPO=\\\"meshtacore-firmware\\\" ${{ steps.parse-step.outputs.extra_build_flags }}"
+          PIP_BREAK_SYSTEM_PACKAGES: "1"
+          TARGET: ${{ steps.parse-step.outputs.target }}
+        run: |
+          ARCH="${{ steps.arch-step.outputs.arch }}"
+          case "$ARCH" in
+            esp32|esp32s3|esp32c3|esp32c6) SCRIPT=bin/build-esp32.sh ;;
+            nrf52840)                      SCRIPT=bin/build-nrf52.sh ;;
+            nrf54l15)                      SCRIPT=bin/build-nrf54l15.sh ;;
+            rp2040|rp2350)                 SCRIPT=bin/build-rp2xx0.sh ;;
+            stm32)                         SCRIPT=bin/build-stm32wl.sh ;;
+            *)
+              echo "::error::Arquitectura '$ARCH' no soportada directamente."
+              exit 1
+              ;;
+          esac
+          echo "Compilando $TARGET con $SCRIPT..."
+          bash "$SCRIPT" "$TARGET"
+
+      - name: ccache stats
+        id: ccache-stats
+        if: steps.rate-limit.outputs.limit_exceeded != 'true' && steps.parse-step.outputs.valid == 'true'
+        run: |
+          ccache -s || true
+          MISSES="$(ccache --print-stats 2>/dev/null | awk -F'\t' '$1=="cache_miss"{print $2}')"
+          echo "ccache misses: ${MISSES:-unknown}"
+          # Only store a new cache entry when this run compiled a meaningful amount of new code.
+          if [ "${MISSES:-0}" -gt 25 ]; then echo "save=true" >> "$GITHUB_OUTPUT"; fi
+
+      - name: Save ccache
+        if: steps.ccache-stats.outputs.save == 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ~/.ccache
+          key: ccache-${{ steps.arch-step.outputs.arch }}-${{ steps.parse-step.outputs.target }}-${{ github.run_id }}
+
+      - name: Add OTA Loader to the bundle
+        if: steps.rate-limit.outputs.limit_exceeded != 'true' && steps.parse-step.outputs.valid == 'true'
+        run: bash .github/scripts/fetch_ota_loader.sh "${{ steps.arch-step.outputs.arch }}"
+
+      - name: Prepare Release Bundle
+        if: steps.rate-limit.outputs.limit_exceeded != 'true' && steps.parse-step.outputs.valid == 'true'
+        env:
+          TARGET: ${{ steps.parse-step.outputs.target }}
+          RAW_SHORT_NAME: ${{ steps.parse-step.outputs.owner_short_name }}
+        run: |
+          # The short name ends up in a file name and in GITHUB_ENV: keep only safe characters.
+          SHORT_NAME="$(printf '%s' "$RAW_SHORT_NAME" | tr -cd 'A-Za-z0-9_-')"
+          mkdir -p release
+          cp userPrefs.jsonc release/config_used.jsonc
+
+          cat << 'EOF' > release/FLASHING_INSTRUCTIONS.txt
+          ===================================================================
+          MESHTACORE CUSTOM FIRMWARE BUNDLE
+          ===================================================================
+
+          Este archivo contiene el firmware compilado con tus ajustes integrados.
+          Estos valores residen en el binario y se aplican en el primer arranque
+          y TRAS CUALQUIER FACTORY RESET.
+
+          CÓMO FLASHEAR:
+          --------------
+          1. Dispositivos nRF52 (RAK4631, Heltec T114, T-Echo, T1000-E...):
+             - Conecta el dispositivo por USB.
+             - Haz doble clic rápido en el botón RESET para entrar en modo bootloader.
+             - Aparecerá una unidad USB en tu ordenador.
+             - Copia el archivo .uf2 a esa unidad. El nodo se reiniciará automáticamente.
+
+          2. Dispositivos ESP32 (Heltec V3/V4, T-Beam, Station G2...):
+             - Opción Web (la más simple): abre
+               https://xejarque.github.io/meshtacore-firmware/flasher.html
+               en Chrome o Edge de escritorio, elige este .zip tal cual y pulsa el botón.
+               Escribe también el OTA Loader.
+             - Opción Script (este .zip trae todo lo necesario): descomprime y, en esa carpeta:
+               En Linux/macOS: ./device-install.sh -f firmware-*.factory.bin
+               En Windows:     device-install.bat -f firmware-*.factory.bin   (necesita Python con esptool)
+             - No escribas el .factory.bin a mano con esptool: sin el OTA Loader (mt-*-ota.bin
+               en ota_1) la placa no se podrá actualizar por Bluetooth.
+
+          ACTUALIZAR MÁS ADELANTE POR BLUETOOTH (ESP32):
+          ----------------------------------------------
+          En la app de Meshtastic, Ajustes > Actualización de firmware, elige el
+          firmware-*.bin SIN "factory" en el nombre. El .factory.bin solo vale por cable.
+          ===================================================================
+          EOF
+
+          TIMESTAMP=$(date +'%Y%m%d_%H%M%S')
+          ZIP_NAME="meshtacore-${TARGET}-${SHORT_NAME}-${TIMESTAMP}.zip"
+          echo "ZIP_NAME=$ZIP_NAME" >> "$GITHUB_ENV"
+          cd release
+          zip -9 -r "../$ZIP_NAME" ./*
+          cd ..
+
+      - name: Encrypt Bundle for the Requester
+        if: steps.rate-limit.outputs.limit_exceeded != 'true' && steps.parse-step.outputs.valid == 'true'
+        run: |
+          # The firmware embeds PSKs/passwords and releases/artifacts are public: only the
+          # browser that created the request holds the key able to open the bundle.
+          python3 .github/scripts/build_crypto.py encrypt-file --in "$ZIP_NAME" --out "$ZIP_NAME.enc"
+          rm -f "$ZIP_NAME"
+          echo "ZIP_NAME=$ZIP_NAME.enc" >> "$GITHUB_ENV"
+
+      - name: Upload Firmware to Artifacts
+        if: steps.rate-limit.outputs.limit_exceeded != 'true' && steps.parse-step.outputs.valid == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.ZIP_NAME }}
+          path: ${{ env.ZIP_NAME }}
+          retention-days: 30
+
+      - name: Publish to Releases and Notify in Issue
+        if: steps.rate-limit.outputs.limit_exceeded != 'true' && steps.parse-step.outputs.valid == 'true'
+        env:
+          TARGET: ${{ steps.parse-step.outputs.target }}
+          LONG_NAME: ${{ steps.parse-step.outputs.owner_long_name }}
+          SHORT_NAME: ${{ steps.parse-step.outputs.owner_short_name }}
+        run: |
+          ISSUE_NUM="${{ github.event.issue.number }}"
+          REPO="${{ github.repository }}"
+          ARCH="${{ steps.arch-step.outputs.arch }}"
+          RUN_URL="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+
+          # Create rolling custom-builds release if missing
+          if ! gh release view custom-builds --repo "$REPO" >/dev/null 2>&1; then
+            gh release create custom-builds --repo "$REPO" \
+              --title "Meshtacore Custom Firmware Builds" \
+              --notes "Firmwares compilados a medida por solicitud comunitaria." \
+              --prerelease
+          fi
+
+          # Upload ZIP to custom-builds release
+          gh release upload custom-builds "$ZIP_NAME" --repo "$REPO" --clobber
+          DOWNLOAD_URL="https://github.com/$REPO/releases/download/custom-builds/$ZIP_NAME"
+
+          # Also publish the (already encrypted) bundle on a data branch: release assets have no CORS
+          # headers but raw.githubusercontent.com does, so decrypt.html can fetch it in one step.
+          # Plain fast-forward commits only; the newest 20 bundles are kept.
+          DATA_BRANCH="custom-builds-data"
+          REMOTE="https://x-access-token:${GITHUB_TOKEN}@github.com/${REPO}.git"
+          WORK="$(mktemp -d)"
+          for ATTEMPT in 1 2 3; do
+            rm -rf "$WORK" && mkdir -p "$WORK"
+            if git ls-remote --exit-code --heads "$REMOTE" "$DATA_BRANCH" >/dev/null 2>&1; then
+              git clone -q --depth 1 --branch "$DATA_BRANCH" "$REMOTE" "$WORK"
+            else
+              git init -q "$WORK"
+              git -C "$WORK" checkout -q --orphan "$DATA_BRANCH"
+            fi
+            cp "$ZIP_NAME" "$WORK/"
+            # Bundle names end in YYYYMMDD_HHMMSS.zip.enc: sort by that stamp, drop all but the newest 20.
+            (cd "$WORK" && ls -1 ./*.enc | sed -E 's/^(.*)-([0-9]{8}_[0-9]{6})\.zip\.enc$/\2 \1-\2.zip.enc/' \
+              | sort -r | tail -n +21 | cut -d' ' -f2- | xargs -r rm -f)
+            git -C "$WORK" add -A
+            git -C "$WORK" -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+              commit -q -m "Add encrypted bundle $ZIP_NAME"
+            if git -C "$WORK" push -q "$REMOTE" "$DATA_BRANCH"; then
+              break
+            fi
+            echo "Concurrent publish, retrying ($ATTEMPT/3)..."
+          done
+
+          OWNER="${REPO%%/*}"
+          DECRYPT_URL="https://${OWNER,,}.github.io/${REPO#*/}/decrypt.html?f=${ZIP_NAME}"
+
+          # Post reply comment on issue
+          gh issue comment "$ISSUE_NUM" --repo "$REPO" --body "### 🎉 ¡Tu Firmware Meshtacore está listo!
+
+          - **Placa Objetivo:** \`$TARGET\` (\`$ARCH\`)
+          - **Nombre del Nodo:** \`$LONG_NAME\` (\`$SHORT_NAME\`)
+          - **Archivo (cifrado):** \`$ZIP_NAME\`
+
+          🔒 El firmware lleva tus claves y contraseñas, así que está **cifrado**: solo el navegador desde el que hiciste la solicitud puede abrirlo.
+
+          1. 🔓 **[Descargar y descifrar firmware]($DECRYPT_URL)** (ábrelo en el mismo navegador desde el que hiciste la solicitud: te entrega el \`.zip\` directamente).
+          2. Abre el [Flasher](https://xejarque.github.io/meshtacore-firmware/flasher.html) (Chrome o Edge de escritorio) y elige el \`.zip\` tal cual: también escribe el OTA Loader, necesario para actualizar por Bluetooth. Si tu placa es nRF52, puedes descomprimir y copiar el \`.uf2\`.
+
+          > ℹ️ Si el descifrador no puede descargarlo solo, [baja el archivo cifrado a mano]($DOWNLOAD_URL) y selecciónalo en esa misma página.
+          >
+          > ⚠️ Si borras los datos del navegador pierdes la clave y habrá que repetir la compilación. Puedes exportar una copia de seguridad desde el descifrador.
+
+          _Enlace de respaldo en GitHub Actions: [Ver ejecución]($RUN_URL)_"
+
+          gh issue edit "$ISSUE_NUM" --repo "$REPO" --remove-label "build-in-progress" --add-label "build-completed" || true
+          gh issue close "$ISSUE_NUM" --repo "$REPO"
+
+      - name: Notify Failure in Issue
+        if: failure() && steps.rate-limit.outputs.limit_exceeded != 'true'
+        run: |
+          ISSUE_NUM="${{ github.event.issue.number }}"
+          REPO="${{ github.repository }}"
+          RUN_URL="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          gh issue comment "$ISSUE_NUM" --repo "$REPO" --body "❌ **Error durante la compilación.** Hubo un fallo al compilar para la placa seleccionada. Puedes revisar el registro de errores en: [Ver ejecución en GitHub Actions]($RUN_URL)."
+          gh issue edit "$ISSUE_NUM" --repo "$REPO" --remove-label "build-in-progress" --add-label "build-failed" || true
+          gh issue close "$ISSUE_NUM" --repo "$REPO" --reason "not planned"

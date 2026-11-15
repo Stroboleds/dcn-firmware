@@ -19,7 +19,8 @@ Dos “celdas” (mallas) compartiendo un núcleo: alinea con Meshtastic + MeshC
 
 | Rol | Hex | Uso |
 |-----|-----|-----|
-| Primario | `#0D4F4F` | Meshtastic / celda A |
+| Primario UI web (defecto) | `#0077FF` | Azul eléctrico — paleta builder |
+| Primario DCN | `#0D4F4F` | Meshtastic / celda A |
 | Secundario | `#E85D04` | MeshCore / celda B |
 | Fondo | `#12151A` | Pantallas oscuras |
 | Texto | `#E8EAED` | Cuerpo |

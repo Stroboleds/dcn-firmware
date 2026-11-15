@@ -57,14 +57,17 @@ def parse_xbm(path: Path) -> tuple[int, int, str]:
     return w, h, "{ " + ", ".join(hexes) + " }"
 
 
-def format_value(key: str, value: str) -> str:
-    if value.startswith("{") or value.startswith("meshtastic_"):
-        return f'  "{key}": {value},'
-    return f'  "{key}": {json.dumps(value)},'
+def format_value(key: str, value: str, trailing_comma: bool = True) -> str:
+    suffix = "," if trailing_comma else ""
+    if value.startswith("meshtastic_"):
+        return f'  "{key}": "{value}"{suffix}'
+    if value.startswith("{") and not value.startswith('"{'):
+        return f'  "{key}": "{value}"{suffix}'
+    return f'  "{key}": {json.dumps(value)}{suffix}'
 
 
-def patch_key(text: str, key: str, value: str) -> str:
-    line = format_value(key, value)
+def patch_key(text: str, key: str, value: str, last: bool = False) -> str:
+    line = format_value(key, value, trailing_comma=not last)
     pattern = rf'^\s*"{re.escape(key)}"\s*:\s*.*,?$\n?'
     if re.search(pattern, text, flags=re.MULTILINE):
         return re.sub(pattern, line + "\n", text, count=1, flags=re.MULTILINE)
@@ -87,8 +90,15 @@ def main() -> None:
         overlay["USERPREFS_OEM_IMAGE_HEIGHT"] = str(h)
         overlay["USERPREFS_OEM_IMAGE_DATA"] = arr
 
-    for key, val in overlay.items():
-        text = patch_key(text, key, str(val))
+    keys = list(overlay.items())
+    for idx, (key, val) in enumerate(keys):
+        text = patch_key(text, key, str(val), last=(idx == len(keys) - 1))
+
+    text = re.sub(
+        r'("USERPREFS_TZ_STRING": "[^"]*")\s*\n(\s*"USERPREFS_OEM_)',
+        r"\1,\n\2",
+        text,
+    )
 
     TARGET.write_text(text, encoding="utf-8")
     print(f"Patched {len(overlay)} DCN keys in {TARGET}")

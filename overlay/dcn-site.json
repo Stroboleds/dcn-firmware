@@ -1,0 +1,10 @@
+{
+  "repo_owner": "Stroboleds",
+  "repo_name": "dcn-firmware",
+  "brand_name": "Cell-Mesh",
+  "brand_short": "DCN",
+  "brand_badge": "Dual-Cell-Net",
+  "pages_base": "https://stroboleds.github.io/dcn-firmware",
+  "workflow_file": "custom_builder.yml",
+  "upstream_credit": "Basado en meshtacore-firmware (Meshtastic + MeshCore). Meshtastic® es marca de Meshtastic LLC."
+}

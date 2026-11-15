@@ -30,3 +30,6 @@ Thumbs.db
 __pycache__/
 .venv/
 *.pyc
+
+# Local build logs
+build-dcn-t-deck.log
