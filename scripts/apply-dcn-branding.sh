@@ -63,4 +63,8 @@ if [[ -f branding/exports/dcn_icon_64.png ]]; then
   cp -f branding/exports/dcn_icon_64.png firmware/images/dcn_node.png
 fi
 
+if [[ -d firmware/.pio/libdeps ]]; then
+  "$PY" scripts/patch-device-ui-dcn.py "$ROOT/firmware"
+fi
+
 echo "DCN branding aplicado."

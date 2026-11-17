@@ -9,8 +9,9 @@ Firmware y documentación para **Dual-Cell-Net (DCN)**: marca propia sobre base 
 | Fase | Descripción |
 |------|-------------|
 | 🟢 Listo | CI en GitHub (`custom_builder.yml`, `pages.yml`) + builder web Cell-Mesh |
-| 🟡 En curso | Build validado `dcn-t-deck` EU868 (probar en Actions/Linux) |
-| 🟡 v1 | Espectro EU863–870: comando `DCN SPECTRUM` (ver docs/SPECTRUM.md) |
+| 🟢 Listo | Build `dcn-t-deck` EU868 en Actions + release `dcn-latest` |
+| 🟢 v2 | Espectro: comando `DCN SPECTRUM` + hilo local (validado) |
+| 🟡 v3 | Pantalla LVGL **Ajustes → Herramientas → DCN Espectro** (tiempo real, MHz, boost) |
 
 ## Requisitos de hardware
 

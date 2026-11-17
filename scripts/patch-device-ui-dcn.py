@@ -1,0 +1,77 @@
+#!/usr/bin/env python3
+"""Copia panel DCN Espectro (v3) al meshtastic-device-ui y parchea TFTView."""
+from __future__ import annotations
+
+import re
+import shutil
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+OVERLAY_DCN = ROOT / "overlay" / "device-ui" / "dcn"
+VIEW_CPP = "source/graphics/TFT/TFTView_320x240.cpp"
+
+
+def find_device_ui(firmware_dir: Path) -> Path | None:
+    libdeps = firmware_dir / ".pio" / "libdeps"
+    if not libdeps.is_dir():
+        return None
+    for child in libdeps.iterdir():
+        if not child.is_dir():
+            continue
+        candidate = child / "meshtastic-device-ui"
+        if candidate.is_dir():
+            return candidate
+    for candidate in firmware_dir.rglob("meshtastic-device-ui"):
+        if (candidate / "library.json").is_file():
+            return candidate
+    return None
+
+
+def patch_tft_view(device_ui: Path) -> None:
+    cpp = device_ui / VIEW_CPP
+    if not cpp.is_file():
+        raise SystemExit(f"Falta {cpp}")
+    text = cpp.read_text(encoding="utf-8")
+    inc = '#include "DcnSpectrumPanel.h"\n'
+    if "DcnSpectrumPanel.h" not in text:
+        anchor = '#include "graphics/view/TFT/TFTView_320x240.h"'
+        if anchor not in text:
+            anchor = '#include "TFTView_320x240.h"'
+        text = text.replace(anchor, anchor + "\n" + inc, 1)
+
+    hook = "\n#ifdef DCN_BRAND\n    dcnSpectrumPanelInstall(this);\n#endif"
+    if "dcnSpectrumPanelInstall" not in text:
+        marker = "screensInitialised = true;"
+        if marker not in text:
+            raise SystemExit("No se encontró screensInitialised en TFTView")
+        text = text.replace(marker, marker + hook, 1)
+
+    cpp.write_text(text, encoding="utf-8")
+    print(f"Parcheado {cpp}")
+
+
+def main() -> None:
+    firmware = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / "firmware"
+    ui = find_device_ui(firmware)
+    if not ui:
+        print("patch-device-ui-dcn: meshtastic-device-ui aún no instalado; se omite")
+        return
+    dest = ui / "source" / "dcn"
+    dest.mkdir(parents=True, exist_ok=True)
+    if not OVERLAY_DCN.is_dir():
+        raise SystemExit(f"Falta {OVERLAY_DCN}")
+    for src in OVERLAY_DCN.glob("*"):
+        if src.is_file():
+            shutil.copy2(src, dest / src.name)
+    patch_tft_view(ui)
+    es = ui / "extra_script.py"
+    es_text = es.read_text(encoding="utf-8")
+    if '"+<source/dcn>"' not in es_text:
+        es_text = es_text.replace('"+<source>"', '"+<source>", "+<source/dcn>"')
+        es.write_text(es_text, encoding="utf-8")
+    print(f"DCN device-ui v3 → {ui}")
+
+
+if __name__ == "__main__":
+    main()

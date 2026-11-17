@@ -388,6 +388,7 @@ jobs:
           # mode, so framework, libs and most of src/ still hit.
           command -v ccache >/dev/null || sudo apt-get install -y -qq ccache
           pio pkg install -e "${{ steps.target-step.outputs.target }}"
+          python3 ../scripts/patch-device-ui-dcn.py "${{ github.workspace }}/firmware"
           bash .github/scripts/pio_ccache_wrap.sh
           {
             echo "CCACHE_DIR=$HOME/.ccache"

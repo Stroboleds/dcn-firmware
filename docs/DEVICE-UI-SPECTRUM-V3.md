@@ -1,6 +1,16 @@
 # Espectro DCN v3 — pantalla LVGL (plan)
 
-## Por qué no hay menú “Espectro” aún
+## v3 — dónde abrirlo (firmware con parche device-ui)
+
+**Ajustes (engranaje) → Herramientas → `DCN Espectro`**
+
+- Sliders **inicio/fin MHz** (850–930, acotado al SX1262)
+- **RX boost** y modo **Live** (re-barrido automático)
+- Gráfico de barras en pantalla
+
+Requiere build `dcn-t-deck` posterior al commit v3 (parche `patch-device-ui-dcn.py` en CI).
+
+## Histórico — por qué antes no había menú
 
 El T-Deck usa **device-ui** (LVGL). El módulo DCN v1/v2 vive en el **firmware**; la UI hay que extenderla en `meshtastic-device-ui` (Herramientas / panel nuevo).
 
