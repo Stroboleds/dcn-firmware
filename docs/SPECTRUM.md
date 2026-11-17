@@ -4,7 +4,7 @@
 
 | Capa | ¿Existe? | Notas |
 |------|----------|--------|
-| **UI TFT 863–870 MHz** (barras / waterfall en T-Deck) | **v1 (texto MUI)** | Mensaje `DCN SPECTRUM` → barrido + gráfico ASCII en chat |
+| **UI TFT 863–870 MHz** (barras / waterfall en T-Deck) | **v2 (hilo local + █)** | `DCN SPECTRUM` → barrido + gráfico Unicode en mensajes MUI; v3 = LVGL fullscreen |
 | **FREQSCAN / NOISE** (meshtacore / Nexus) | **Sí** | Por RF y consola `/mtc`, respuesta en texto |
 | **RSSI instantáneo SX126x** | **Sí** | `SX126xInterface::getInstantaneousRSSI()` → RadioLib `getRSSI(false)` |
 

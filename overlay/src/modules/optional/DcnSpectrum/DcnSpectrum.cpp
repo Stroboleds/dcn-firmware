@@ -5,6 +5,7 @@
 #if defined(DCN_SPECTRUM_UI) && DCN_SPECTRUM_UI
 
 #include "DcnSpectrum.h"
+#include "DcnSpectrumUi.h"
 #include "MeshService.h"
 #include "NodeDB.h"
 #include "Router.h"
@@ -76,6 +77,7 @@ class DcnSpectrumModule : public SinglePortModule, private concurrency::OSThread
             return ProcessMessage::STOP;
         }
         scanRequested = true;
+        dcnSpectrumNotifyScanStart();
         replyText(mp, "DCN: espectro EU 863-870 MHz…");
         return ProcessMessage::STOP;
     }
@@ -123,6 +125,8 @@ class DcnSpectrumModule : public SinglePortModule, private concurrency::OSThread
         loraBackup = config.lora;
         binCount = 0;
 
+        const int totalBins =
+            (int)((kFreqEndMhz - kFreqStartMhz) / kStepMhz + 1.0f);
         for (float f = kFreqStartMhz; f <= kFreqEndMhz + 0.001f && binCount < kMaxBins; f += kStepMhz) {
             config.lora.override_frequency = f;
             config.lora.bandwidth = 125;
@@ -133,6 +137,7 @@ class DcnSpectrumModule : public SinglePortModule, private concurrency::OSThread
             delay(kSettleMs);
             ri->updateNoiseFloor();
             bins[binCount++] = (float)ri->getAverageNoiseFloor();
+            dcnSpectrumNotifyScanProgress(binCount, totalBins);
         }
 
         config.lora = loraBackup;
@@ -147,12 +152,6 @@ class DcnSpectrumModule : public SinglePortModule, private concurrency::OSThread
 
     void publishResults()
     {
-        char body[512];
-        char *w = body;
-        const size_t cap = sizeof(body);
-        int n = snprintf(w, cap, "DCN Spectrum 863-870 MHz (%d puntos)\n", binCount);
-        w += (n > 0 ? n : 0);
-
         float minR = 0, maxR = -200;
         for (int i = 0; i < binCount; i++) {
             if (bins[i] > maxR)
@@ -160,6 +159,14 @@ class DcnSpectrumModule : public SinglePortModule, private concurrency::OSThread
             if (bins[i] < minR)
                 minR = bins[i];
         }
+        dcnSpectrumShowGraph(bins, binCount, minR, maxR);
+
+        char body[512];
+        char *w = body;
+        const size_t cap = sizeof(body);
+        int n = snprintf(w, cap, "DCN Spectrum 863-870 MHz (%d puntos)\n", binCount);
+        w += (n > 0 ? n : 0);
+
         float span = maxR - minR;
         if (span < 6)
             span = 6;
@@ -178,7 +185,7 @@ class DcnSpectrumModule : public SinglePortModule, private concurrency::OSThread
             *w++ = '\n';
             *w = 0;
         }
-        n = snprintf(w, cap - (size_t)(w - body), "RSSI %.0f..%.0f dBm\nTema UI en dispositivo.", minR, maxR);
+        n = snprintf(w, cap - (size_t)(w - body), "RSSI %.0f..%.0f dBm\n(Ver hilo local en pantalla).", minR, maxR);
         (void)n;
 
         LOG_INFO("%s", body);

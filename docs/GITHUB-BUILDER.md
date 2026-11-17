@@ -33,7 +33,7 @@ Tras un build exitoso:
 1. **Artifacts** — en la [ejecución de Actions](https://github.com/Stroboleds/dcn-firmware/actions/workflows/custom_builder.yml), abre la run y en **Artifacts** descarga el `.zip` (nombre con fecha).
 2. **Enlace fijo (sin buscar en Artifacts)** — [Release `dcn-latest`](https://github.com/Stroboleds/dcn-firmware/releases/tag/dcn-latest): archivo `dcn-<placa>-latest.zip` (p. ej. `dcn-t-deck-latest.zip`), actualizado en cada build manual sin cifrado.
 
-Flasheo: [flasher en Pages](https://stroboleds.github.io/dcn-firmware/flasher.html) con el `.zip` completo.
+Flasheo y prueba T-Deck: [docs/FLASH-Y-PRUEBA-T-DECK.md](FLASH-Y-PRUEBA-T-DECK.md) · [flasher web](https://stroboleds.github.io/dcn-firmware/flasher.html).
 
 ## Web vs. dispositivo
 
