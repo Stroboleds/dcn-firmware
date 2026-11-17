@@ -28,11 +28,26 @@ Eso muestrea ruido con la radio en RX (≈15 s, TX deshabilitado) y devuelve est
 
 Estimación: **1–2 sesiones de desarrollo** + prueba en hardware real (la radio no puede TX y espectro a la vez).
 
+## Dónde está en el T-Deck
+
+| Qué | Dónde |
+|-----|--------|
+| **Comando DCN** | Mensajes → enviar `DCN SPECTRUM` o `dcn spectrum 865 875` (también desde el teclado del T-Deck tras fix **loopbackOk**) |
+| **Ganancia RX** | `dcn gain on` / `dcn gain off` (equivale a *boosted gain* SX126x) |
+| **Espectro en pantalla** | v2: hilo local con barras █; **v3**: menú LVGL → [DEVICE-UI-SPECTRUM-V3.md](DEVICE-UI-SPECTRUM-V3.md) |
+| **Signal scanner (Meshtastic)** | Ajustes → Herramientas → **no es** espectro RF DCN |
+
+## SX1262 — ¿700–950 MHz?
+
+No. El **SX1262** trabaja aprox. en **850–930 MHz** (Lora sub-GHz). **700 MHz no** lo cubre este chip.
+
+El **T-Deck Plus EU868** lleva filtro/antena para **868 MHz**: podrás sintonizar más ancho en software (hasta ~930), pero con mucha atenuación fuera de la banda EU.
+
 ## Mientras tanto
 
-1. Compilar **`dcn-t-deck`** en GitHub Actions (tras fix LittleFS en overlay).
-2. Probar **FREQSCAN** en la frecuencia de trabajo.
-3. Seguir diseño de colores con `overlay/device-ui-themes.json` en el builder (UI del nodo).
+1. Compilar **`dcn-t-deck`** con build reciente (módulo + `loopbackOk`).
+2. Opcional upstream: `/mtc FREQSCAN` / `NOISE` por consola.
+3. v3 LVGL: ver [DEVICE-UI-SPECTRUM-V3.md](DEVICE-UI-SPECTRUM-V3.md).
 
 ## Referencia técnica
 
