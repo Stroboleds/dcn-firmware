@@ -104,9 +104,17 @@ def main() -> None:
     patch_tft_header(ui)
     patch_tft_view(ui)
     es = ui / "extra_script.py"
-    es_text = es.read_text(encoding="utf-8")
+    es_orig = es.read_text(encoding="utf-8")
+    es_text = es_orig
     if '"+<source/dcn>"' not in es_text:
         es_text = es_text.replace('"+<source>"', '"+<source>", "+<source/dcn>"')
+    if 'source/dcn")' not in es_text:
+        es_text = es_text.replace(
+            "env.Replace(SRC_FILTER=src_filter)",
+            'env.Append(CPPPATH=[realpath("source/dcn")])\nenv.Replace(SRC_FILTER=src_filter)',
+            1,
+        )
+    if es_text != es_orig:
         es.write_text(es_text, encoding="utf-8")
     print(f"DCN device-ui v3 → {ui}")
 
