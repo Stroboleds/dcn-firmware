@@ -28,6 +28,20 @@ def find_device_ui(firmware_dir: Path) -> Path | None:
     return None
 
 
+def patch_tft_header(device_ui: Path) -> None:
+    header = device_ui / "include/graphics/view/TFT/TFTView_320x240.h"
+    text = header.read_text(encoding="utf-8")
+    if "dcnSpectrumShowPanel" not in text:
+        text = text.replace(
+            "    void enterProgrammingMode(void);",
+            "    void dcnSpectrumShowPanel(lv_obj_t *b, lv_obj_t *p, lv_obj_t *tp);\n"
+            "    void enterProgrammingMode(void);",
+            1,
+        )
+        header.write_text(text, encoding="utf-8")
+        print(f"Parcheado {header}")
+
+
 def patch_tft_view(device_ui: Path) -> None:
     cpp = device_ui / VIEW_CPP
     if not cpp.is_file():
@@ -47,6 +61,14 @@ def patch_tft_view(device_ui: Path) -> None:
             raise SystemExit("No se encontró screensInitialised en TFTView")
         text = text.replace(marker, marker + hook, 1)
 
+    if "dcnSpectrumShowPanel" not in text:
+        stub = (
+            "\n#ifdef DCN_BRAND\n"
+            "void TFTView_320x240::dcnSpectrumShowPanel(lv_obj_t *b, lv_obj_t *p, lv_obj_t *tp)\n"
+            "{\n    ui_set_active(b, p, tp);\n}\n#endif\n"
+        )
+        text = text + stub
+
     cpp.write_text(text, encoding="utf-8")
     print(f"Parcheado {cpp}")
 
@@ -64,6 +86,7 @@ def main() -> None:
     for src in OVERLAY_DCN.glob("*"):
         if src.is_file():
             shutil.copy2(src, dest / src.name)
+    patch_tft_header(ui)
     patch_tft_view(ui)
     es = ui / "extra_script.py"
     es_text = es.read_text(encoding="utf-8")

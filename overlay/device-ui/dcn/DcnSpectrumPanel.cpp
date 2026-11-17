@@ -110,7 +110,7 @@ void openPanel(lv_event_t *e)
 {
     if (lv_event_get_code(e) != LV_EVENT_CLICKED || !gView)
         return;
-    gView->ui_set_active(gToolsBtn, gPanel, gTopBar);
+    gView->dcnSpectrumShowPanel(gToolsBtn, gPanel, gTopBar);
 }
 
 void buildPanel()
