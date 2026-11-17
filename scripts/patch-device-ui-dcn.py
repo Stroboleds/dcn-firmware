@@ -31,19 +31,26 @@ def find_device_ui(firmware_dir: Path) -> Path | None:
 def patch_tft_header(device_ui: Path) -> None:
     header = device_ui / "include/graphics/view/TFT/TFTView_320x240.h"
     text = header.read_text(encoding="utf-8")
-    if "dcnSpectrumShowPanel" in text:
-        text = re.sub(
-            r"\s*void dcnSpectrumShowPanel\(lv_obj_t \*b, lv_obj_t \*p, lv_obj_t \*tp\);\n",
-            "",
-            text,
-            count=1,
-        )
-    anchor = "  private:\n    // view creation only via ViewFactory"
+    # Quitar declaraciones de intentos anteriores (quedaban en protected).
+    text = re.sub(
+        r"\n#ifdef DCN_BRAND\n    void dcnSpectrumShowPanel\(lv_obj_t \*b, lv_obj_t \*p, lv_obj_t \*tp\);\n#endif\n",
+        "",
+        text,
+    )
+    text = re.sub(
+        r"\n    void dcnSpectrumShowPanel\(lv_obj_t \*b, lv_obj_t \*p, lv_obj_t \*tp\);\n",
+        "",
+        text,
+        count=1,
+    )
+    anchor = "  protected:\n    struct NodeFilter {"
     if anchor in text and "dcnSpectrumShowPanel" not in text:
         text = text.replace(
             anchor,
-            "    void dcnSpectrumShowPanel(lv_obj_t *b, lv_obj_t *p, lv_obj_t *tp);\n\n  private:\n"
-            "    // view creation only via ViewFactory",
+            "#ifdef DCN_BRAND\n"
+            "    void dcnSpectrumShowPanel(lv_obj_t *b, lv_obj_t *p, lv_obj_t *tp);\n"
+            "#endif\n\n"
+            "  protected:\n    struct NodeFilter {",
             1,
         )
         header.write_text(text, encoding="utf-8")
