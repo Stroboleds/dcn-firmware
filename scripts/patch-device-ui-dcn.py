@@ -31,11 +31,19 @@ def find_device_ui(firmware_dir: Path) -> Path | None:
 def patch_tft_header(device_ui: Path) -> None:
     header = device_ui / "include/graphics/view/TFT/TFTView_320x240.h"
     text = header.read_text(encoding="utf-8")
-    if "dcnSpectrumShowPanel" not in text:
+    if "dcnSpectrumShowPanel" in text:
+        text = re.sub(
+            r"\s*void dcnSpectrumShowPanel\(lv_obj_t \*b, lv_obj_t \*p, lv_obj_t \*tp\);\n",
+            "",
+            text,
+            count=1,
+        )
+    anchor = "  private:\n    // view creation only via ViewFactory"
+    if anchor in text and "dcnSpectrumShowPanel" not in text:
         text = text.replace(
-            "    void enterProgrammingMode(void);",
-            "    void dcnSpectrumShowPanel(lv_obj_t *b, lv_obj_t *p, lv_obj_t *tp);\n"
-            "    void enterProgrammingMode(void);",
+            anchor,
+            "    void dcnSpectrumShowPanel(lv_obj_t *b, lv_obj_t *p, lv_obj_t *tp);\n\n  private:\n"
+            "    // view creation only via ViewFactory",
             1,
         )
         header.write_text(text, encoding="utf-8")
